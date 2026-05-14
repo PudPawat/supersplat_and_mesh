@@ -37,14 +37,30 @@ class MeshGizmo {
         resize();
         events.on('camera.resize', resize);
 
-        // Re-render while a gizmo handle is visible
+        // Block camera controller while dragging a gizmo handle
+        // PlayCanvas fires 'transform:start' / 'transform:end' on TransformGizmo
+        const canvas = scene.canvas;
+        const blockCamera = (e: PointerEvent) => { e.stopPropagation(); };
+
         [this.translate, this.rotate, this.scale].forEach(g => {
             g.on('render:update', () => { scene.forceRender = true; });
+
+            g.on('transform:start', () => {
+                // Capture pointer so the camera controller never sees these events
+                canvas.addEventListener('pointerdown', blockCamera, true);
+                canvas.addEventListener('pointermove', blockCamera, true);
+                canvas.addEventListener('pointerup',   blockCamera, true);
+            });
+
+            g.on('transform:end', () => {
+                canvas.removeEventListener('pointerdown', blockCamera, true);
+                canvas.removeEventListener('pointermove', blockCamera, true);
+                canvas.removeEventListener('pointerup',   blockCamera, true);
+            });
 
             g.on('transform:move', () => {
                 const m = this.mesh;
                 if (!m?.pivot) return;
-                // Notify panel + SSR to sync
                 events.fire('mesh.transform.changed', m);
                 scene.forceRender = true;
             });

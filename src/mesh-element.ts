@@ -217,37 +217,39 @@ class MeshElement extends Element {
         px: number, py: number, pz: number,
         sx: number, sy: number, sz: number
     ): Entity {
+        // Follow SuperSplat pattern: add to hierarchy first, THEN add component, THEN set layers
         const e = new Entity(name);
-        e.addComponent('render', { type });
-        this.pivot.addChild(e);
         e.setLocalPosition(px, py, pz);
         e.setLocalScale(sx, sy, sz);
+        this.pivot.addChild(e);           // must be in scene graph first
+        e.addComponent('render', { type });
         e.render.layers = [scene.meshLayer.id];
         return e;
     }
 
     // ── bullet: elongated cylinder body + cone tip ───────────────────────────
     private _buildBulletGeometry(scene: Scene) {
-        // Body (cylinder): radius 0.08, height 0.55
-        this._addRenderChild(scene, 'bullet-body', 'cylinder',  0,  0,      0,  0.16, 0.55, 0.16);
-        // Tip (cone): radius 0.08, height 0.22, sits on top of body
-        this._addRenderChild(scene, 'bullet-tip',  'cone',      0,  0.385,  0,  0.16, 0.22, 0.16);
-        // Flat base cap (sphere squashed):
-        this._addRenderChild(scene, 'bullet-base', 'sphere',    0, -0.275,  0,  0.16, 0.05, 0.16);
+        console.log('[MeshElement] building bullet geometry');
+        // Body (cylinder): total height ~1 unit, radius 0.12
+        this._addRenderChild(scene, 'bullet-body', 'cylinder',  0,  0,       0,  0.24, 0.7,  0.24);
+        // Pointed tip (cone) sits on top of body
+        this._addRenderChild(scene, 'bullet-tip',  'cone',      0,  0.5,     0,  0.24, 0.3,  0.24);
+        // Slightly rounded flat base
+        this._addRenderChild(scene, 'bullet-base', 'sphere',    0, -0.35,    0,  0.24, 0.08, 0.24);
     }
 
     // ── wave: concentric flat torus rings (Matrix bullet-time ripple) ────────
     private _buildWaveGeometry(scene: Scene) {
+        console.log('[MeshElement] building wave geometry');
         // 6 rings at increasing radii, each very flat in Y
         const rings = [0.4, 0.65, 0.92, 1.22, 1.56, 1.94];
         rings.forEach((r, i) => {
             // thickness tapers off with radius for a natural ripple look
             const thickness = 0.06 - i * 0.006;
             const e = new Entity(`wave-ring-${i}`);
-            e.addComponent('render', { type: 'torus' });
-            this.pivot.addChild(e);
-            // Scale X/Z for ring radius, Y flat, torus inner radius via scale trick
             e.setLocalScale(r, thickness, r);
+            this.pivot.addChild(e);
+            e.addComponent('render', { type: 'torus' });
             e.render.layers = [scene.meshLayer.id];
         });
     }
