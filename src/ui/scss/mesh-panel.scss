@@ -35,6 +35,11 @@
         background: $bcg-darkest;
         color: $clr-hilight;
     }
+
+    &.active {
+        background: $clr-hilight;
+        color: #000;
+    }
 }
 
 .collapsed #mesh-panel {

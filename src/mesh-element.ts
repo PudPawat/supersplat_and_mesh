@@ -226,6 +226,22 @@ class MeshElement extends Element {
         if (rotation) this.pivot.setRotation(rotation);
         if (scale)    this.pivot.setLocalScale(scale);
     }
+
+    // ── transform accessors for the panel / gizmo ─────────────────────────
+
+    getPosition(): Vec3 { return this.pivot?.getPosition().clone() ?? new Vec3(); }
+    getRotationEuler(): Vec3 {
+        const e = new Vec3();
+        this.pivot?.getRotation().getEulerAngles(e);
+        return e;
+    }
+    getScale(): Vec3 { return this.pivot?.getLocalScale().clone() ?? new Vec3(1, 1, 1); }
+
+    setPosition(v: Vec3) { this.pivot?.setPosition(v); }
+    setRotationEuler(e: Vec3) {
+        this.pivot?.setEulerAngles(e.x, e.y, e.z);
+    }
+    setScale(v: Vec3) { this.pivot?.setLocalScale(v); }
 }
 
 export { MeshElement };
