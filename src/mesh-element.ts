@@ -16,7 +16,7 @@ import { captureReflectionProbe } from './mesh-probe';
 import { ssrChunk } from './shaders/ssr-shader';
 import { Scene } from './scene';
 
-export type MeshMaterialPreset = 'glass' | 'mirror' | 'metal' | 'plastic' | 'custom';
+export type MeshMaterialPreset = 'glass' | 'mirror' | 'metal' | 'plastic' | 'custom' | 'gold' | 'wave';
 
 export interface MeshMaterialOptions {
     preset: MeshMaterialPreset;
@@ -30,11 +30,13 @@ export interface MeshMaterialOptions {
 }
 
 const PRESETS: Record<MeshMaterialPreset, Partial<MeshMaterialOptions>> = {
-    glass:   { opacity: 0.75, tintR: 0.88, tintG: 0.96, tintB: 1.00, reflectivity: 1.0,  metalness: 0.3, roughness: 0.0 },
-    mirror:  { opacity: 1.0,  tintR: 0.95, tintG: 0.95, tintB: 0.95, reflectivity: 1.0,  metalness: 1.0, roughness: 0.0 },
-    metal:   { opacity: 1.0,  tintR: 0.9,  tintG: 0.85, tintB: 0.75, reflectivity: 0.7,  metalness: 1.0, roughness: 0.2 },
-    plastic: { opacity: 1.0,  tintR: 1.0,  tintG: 0.3,  tintB: 0.3,  reflectivity: 0.2,  metalness: 0.0, roughness: 0.4 },
-    custom:  { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.5,  metalness: 0.0, roughness: 0.2 }
+    glass:   { opacity: 0.75, tintR: 0.88, tintG: 0.96, tintB: 1.00, reflectivity: 1.0,  metalness: 0.3,  roughness: 0.0  },
+    mirror:  { opacity: 1.0,  tintR: 0.95, tintG: 0.95, tintB: 0.95, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.0  },
+    metal:   { opacity: 1.0,  tintR: 0.9,  tintG: 0.85, tintB: 0.75, reflectivity: 0.7,  metalness: 1.0,  roughness: 0.2  },
+    plastic: { opacity: 1.0,  tintR: 1.0,  tintG: 0.3,  tintB: 0.3,  reflectivity: 0.2,  metalness: 0.0,  roughness: 0.4  },
+    custom:  { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.5,  metalness: 0.0,  roughness: 0.2  },
+    gold:    { opacity: 1.0,  tintR: 1.0,  tintG: 0.78, tintB: 0.18, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.05 },
+    wave:    { opacity: 0.22, tintR: 0.82, tintG: 0.96, tintB: 1.0,  reflectivity: 0.9,  metalness: 0.15, roughness: 0.0  },
 };
 
 const defaultOptions = (): MeshMaterialOptions => ({
@@ -76,18 +78,27 @@ class MeshElement extends Element {
         this.pivot = new Entity(this._name);
 
         if (this.source.kind === 'primitive') {
-            // use render component — same as sphere-shape.ts / box-shape.ts
-            this.pivot.addComponent('render', {
-                type: this.source.type
-            });
-            scene.contentRoot.addChild(this.pivot);
+            if (this.source.type === 'bullet') {
+                scene.contentRoot.addChild(this.pivot);
+                this._buildBulletGeometry(scene);
+                this.setMaterialOptions({ preset: 'gold' });
+            } else if (this.source.type === 'wave') {
+                scene.contentRoot.addChild(this.pivot);
+                this._buildWaveGeometry(scene);
+                this.setMaterialOptions({ preset: 'wave' });
+            } else {
+                // use render component — same as sphere-shape.ts / box-shape.ts
+                this.pivot.addComponent('render', {
+                    type: this.source.type
+                });
+                scene.contentRoot.addChild(this.pivot);
 
-            // set layer AFTER adding to scene (matches supersplat pattern)
-            this.pivot.render.layers = [scene.meshLayer.id];
+                // set layer AFTER adding to scene (matches supersplat pattern)
+                this.pivot.render.layers = [scene.meshLayer.id];
 
-            this._buildMaterial();
-            this._applyToRender(this.pivot);
-
+                this._buildMaterial();
+                this._applyToRender(this.pivot);
+            }
         } else {
             // GLB / GLTF container
             scene.contentRoot.addChild(this.pivot);
@@ -200,6 +211,45 @@ class MeshElement extends Element {
             mat.depthWrite = true;
         }
         mat.update();
+    }
+
+    private _addRenderChild(scene: Scene, name: string, type: string,
+        px: number, py: number, pz: number,
+        sx: number, sy: number, sz: number
+    ): Entity {
+        const e = new Entity(name);
+        e.addComponent('render', { type });
+        this.pivot.addChild(e);
+        e.setLocalPosition(px, py, pz);
+        e.setLocalScale(sx, sy, sz);
+        e.render.layers = [scene.meshLayer.id];
+        return e;
+    }
+
+    // ── bullet: elongated cylinder body + cone tip ───────────────────────────
+    private _buildBulletGeometry(scene: Scene) {
+        // Body (cylinder): radius 0.08, height 0.55
+        this._addRenderChild(scene, 'bullet-body', 'cylinder',  0,  0,      0,  0.16, 0.55, 0.16);
+        // Tip (cone): radius 0.08, height 0.22, sits on top of body
+        this._addRenderChild(scene, 'bullet-tip',  'cone',      0,  0.385,  0,  0.16, 0.22, 0.16);
+        // Flat base cap (sphere squashed):
+        this._addRenderChild(scene, 'bullet-base', 'sphere',    0, -0.275,  0,  0.16, 0.05, 0.16);
+    }
+
+    // ── wave: concentric flat torus rings (Matrix bullet-time ripple) ────────
+    private _buildWaveGeometry(scene: Scene) {
+        // 6 rings at increasing radii, each very flat in Y
+        const rings = [0.4, 0.65, 0.92, 1.22, 1.56, 1.94];
+        rings.forEach((r, i) => {
+            // thickness tapers off with radius for a natural ripple look
+            const thickness = 0.06 - i * 0.006;
+            const e = new Entity(`wave-ring-${i}`);
+            e.addComponent('render', { type: 'torus' });
+            this.pivot.addChild(e);
+            // Scale X/Z for ring radius, Y flat, torus inner radius via scale trick
+            e.setLocalScale(r, thickness, r);
+            e.render.layers = [scene.meshLayer.id];
+        });
     }
 
     private _applyToRender(entity: Entity) {

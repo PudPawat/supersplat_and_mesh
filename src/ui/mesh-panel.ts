@@ -31,10 +31,12 @@ class MeshPanel extends Container {
         primRow.append(primLabel);
 
         const shapes = [
-            { type: 'sphere', icon: '⬤' },
-            { type: 'box',    icon: '⬛' },
+            { type: 'sphere',   icon: '⬤' },
+            { type: 'box',      icon: '⬛' },
             { type: 'cylinder', icon: '⬭' },
-            { type: 'cone',   icon: '▲' },
+            { type: 'cone',     icon: '▲' },
+            { type: 'bullet',   icon: '🔫' },
+            { type: 'wave',     icon: '〰' },
         ];
         shapes.forEach(({ type, icon }) => {
             const btn = new Container({ class: 'mesh-prim-btn' });
@@ -127,6 +129,8 @@ class MeshPanel extends Container {
                 { v: 'mirror',  t: 'Mirror'  },
                 { v: 'metal',   t: 'Metal'   },
                 { v: 'plastic', t: 'Plastic' },
+                { v: 'gold',    t: 'Gold'    },
+                { v: 'wave',    t: 'Wave'    },
                 { v: 'custom',  t: 'Custom'  },
             ],
             value: 'mirror'
