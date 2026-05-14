@@ -7,8 +7,10 @@ import { Tooltips } from './tooltips';
 
 class MeshPanel extends Container {
     constructor(events: Events, tooltips: Tooltips, args = {}) {
-        args = { ...args, id: 'mesh-bar' };
+        args = { ...args, id: 'mesh-bar', class: 'mesh-bar-root' };
         super(args);
+        // Force absolute positioning so PCUI doesn't push canvas around
+        this.dom.style.position = 'absolute';
 
         // Prevent canvas from receiving pointer events through this bar
         ['pointerdown', 'pointerup', 'pointermove', 'wheel', 'dblclick'].forEach(n =>

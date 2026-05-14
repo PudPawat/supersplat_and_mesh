@@ -1,22 +1,17 @@
 /**
  * Click-to-place (Option A).
  *
- * When the user clicks a shape button the panel fires 'mesh.beginPlace'.
- * We enter placement mode: the cursor changes, a ghost preview tracks
- * the mouse, and the first click in the viewport creates the object.
+ * Clicking a shape button activates placement mode (crosshair cursor).
+ * The NEXT left-click in the viewport places the object at that world position.
+ * Right-click or Escape cancels.
  *
- * World position is computed by:
- *   1. Unprojecting the mouse position to a 3-D ray
- *   2. Intersecting the ray with the horizontal plane at the scene's
- *      bounding-box centre Y (floor / table surface)
- *   3. Falling back to the camera's current focal distance if the ray
- *      is nearly horizontal
+ * No ghost mesh — keeps it simple and reliable.
  */
 
 import { Mat4, Vec3, Vec4 } from 'playcanvas';
 
 import { Events } from './events';
-import { MeshElement, MeshSource } from './mesh-element';
+import { MeshElement } from './mesh-element';
 import { Scene } from './scene';
 
 const _invVP = new Mat4();
@@ -31,8 +26,8 @@ const unproject = (ndcX: number, ndcY: number, ndcZ: number, cam: any): Vec3 => 
     return new Vec3(v.x / v.w, v.y / v.w, v.z / v.w);
 };
 
-/** Get world placement position from a mouse event. */
-const worldFromMouse = (e: MouseEvent, scene: Scene): Vec3 => {
+/** Get world placement position from a pointer event. */
+const worldFromPointer = (e: PointerEvent, scene: Scene): Vec3 => {
     const cam    = (scene.camera as any).mainCamera?.camera;
     if (!cam) return new Vec3();
 
@@ -54,92 +49,70 @@ const worldFromMouse = (e: MouseEvent, scene: Scene): Vec3 => {
         }
     }
 
-    // Fallback: focal point distance along ray
-    const d = (scene.camera as any).distanceTween?.value?.distance *
-              ((scene.camera as any).sceneRadius ?? 1);
+    // Fallback: place 2m in front of the camera along the ray
+    const d = 2;
     return new Vec3(near.x + dir.x * d, near.y + dir.y * d, near.z + dir.z * d);
 };
 
 const initMeshPlacement = (scene: Scene, events: Events) => {
     let placementType: string | null = null;
-    let ghostMesh: MeshElement | null = null;
     const canvas = scene.canvas;
 
+    // ── overlay element shown in crosshair mode ────────────────────────────
+    // A transparent full-screen div sits on top of the canvas so we reliably
+    // capture the pointer event without fighting the camera controller.
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+        'position:absolute', 'inset:0', 'z-index:200',
+        'cursor:crosshair', 'display:none'
+    ].join(';');
+    canvas.parentElement?.appendChild(overlay);
+
+    const startPlacement = (type: string) => {
+        placementType = type;
+        overlay.style.display = 'block';
+    };
+
     const cancelPlacement = () => {
-        if (!placementType) return;
         placementType = null;
-        canvas.style.cursor = '';
-
-        if (ghostMesh) {
-            ghostMesh.destroy();
-            ghostMesh = null;
-        }
-        canvas.removeEventListener('mousemove', onMove);
-        canvas.removeEventListener('pointerdown', onClick);
-        canvas.removeEventListener('contextmenu', onCancel);
+        overlay.style.display = 'none';
     };
 
-    const onMove = (e: MouseEvent) => {
-        const pos = worldFromMouse(e, scene);
-        if (ghostMesh?.pivot) {
-            ghostMesh.pivot.setPosition(pos);
-            scene.forceRender = true;
-        }
-    };
-
-    const onClick = (e: PointerEvent) => {
-        if (!placementType) return;
-        if (e.button !== 0) return;          // left button only
+    // Left-click on overlay → place object
+    overlay.addEventListener('pointerdown', (e: PointerEvent) => {
+        if (e.button !== 0) { cancelPlacement(); return; }
         e.stopPropagation();
-        e.preventDefault();
-
-        const pos  = worldFromMouse(e as unknown as MouseEvent, scene);
         const type = placementType;
         cancelPlacement();
+        if (!type) return;
 
-        // Fire the actual creation event with the chosen position
+        const pos = worldFromPointer(e, scene);
         events.fire('mesh.addPrimitive', type, pos);
-    };
+    });
 
-    const onCancel = (e: MouseEvent) => {
+    // Right-click cancels
+    overlay.addEventListener('contextmenu', (e: Event) => {
         e.preventDefault();
         cancelPlacement();
-    };
+    });
 
-    // Triggered by shape buttons
+    // ── event wiring ───────────────────────────────────────────────────────
     events.on('mesh.beginPlace', (type: string) => {
-        cancelPlacement();
-
-        placementType = type;
-        canvas.style.cursor = 'crosshair';
-
-        // Register listeners IMMEDIATELY — do NOT wait for async ghost creation
-        canvas.addEventListener('mousemove', onMove);
-        canvas.addEventListener('pointerdown', onClick);
-        canvas.addEventListener('contextmenu', onCancel);
-
-        // Create ghost preview in background (best-effort visual aid)
-        const source: MeshSource = { kind: 'primitive', type };
-        const ghost = new MeshElement(source, `${type}-preview`);
-        ghost.materialOptions = { ...ghost.materialOptions, opacity: 0.4, preset: 'custom' };
-        scene.add(ghost).then(() => {
-            // Only assign if we're still in this placement session
-            if (placementType === type) {
-                ghostMesh = ghost;
-                events.fire('mesh.ghost.added', ghost);
-            } else {
-                ghost.destroy();  // placement was cancelled before ghost loaded
-            }
-        });
+        startPlacement(type);
     });
 
     events.on('mesh.cancelPlace', cancelPlacement);
 
-    // Click-selection of existing mesh objects (ray vs bounding sphere)
-    canvas.addEventListener('click', (e: MouseEvent) => {
-        if (placementType) return;   // handled by onClick above
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && placementType) cancelPlacement();
+    });
 
-        const cam    = (scene.camera as any).mainCamera?.camera;
+    // ── click-selection of existing mesh objects ───────────────────────────
+    canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+        if (e.button !== 0) return;
+        if (placementType) return;   // overlay handles placement clicks
+
+        const cam = (scene.camera as any).mainCamera?.camera;
         if (!cam) return;
 
         const rect = canvas.getBoundingClientRect();
@@ -150,7 +123,6 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
         const far  = unproject(nx, ny,  1, cam);
         const dir  = new Vec3().sub2(far, near).normalize();
 
-        // Find closest mesh hit
         let bestDist = Infinity;
         let bestMesh: MeshElement | null = null;
 
@@ -158,11 +130,10 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
             const pivot = mesh.pivot;
             if (!pivot || !mesh.visible) return;
 
-            const center  = pivot.getPosition();
-            const scl     = pivot.getLocalScale();
-            const radius  = Math.max(scl.x, scl.y, scl.z) * 0.75;
+            const center = pivot.getPosition();
+            const scl    = pivot.getLocalScale();
+            const radius = Math.max(scl.x, scl.y, scl.z) * 0.75;
 
-            // Ray-sphere intersection
             const oc  = new Vec3().sub2(near, center);
             const a   = dir.dot(dir);
             const b   = 2 * oc.dot(dir);
@@ -178,10 +149,8 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
             }
         });
 
-        if (bestMesh) {
-            events.fire('mesh.click.select', bestMesh);
-        }
+        if (bestMesh) events.fire('mesh.click.select', bestMesh);
     });
 };
 
-export { initMeshPlacement, worldFromMouse };
+export { initMeshPlacement, worldFromPointer as worldFromMouse };
