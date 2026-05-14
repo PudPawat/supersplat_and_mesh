@@ -75,7 +75,7 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
             ghostMesh = null;
         }
         canvas.removeEventListener('mousemove', onMove);
-        canvas.removeEventListener('click', onClick);
+        canvas.removeEventListener('pointerdown', onClick);
         canvas.removeEventListener('contextmenu', onCancel);
     };
 
@@ -87,11 +87,13 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
         }
     };
 
-    const onClick = (e: MouseEvent) => {
+    const onClick = (e: PointerEvent) => {
         if (!placementType) return;
+        if (e.button !== 0) return;          // left button only
         e.stopPropagation();
+        e.preventDefault();
 
-        const pos  = worldFromMouse(e, scene);
+        const pos  = worldFromMouse(e as unknown as MouseEvent, scene);
         const type = placementType;
         cancelPlacement();
 
@@ -105,26 +107,30 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
     };
 
     // Triggered by shape buttons
-    events.on('mesh.beginPlace', async (type: string) => {
+    events.on('mesh.beginPlace', (type: string) => {
         cancelPlacement();
 
         placementType = type;
         canvas.style.cursor = 'crosshair';
 
-        // Create a semi-transparent ghost so the user can see where it will land
-        const source: MeshSource = { kind: 'primitive', type };
-        ghostMesh = new MeshElement(source, `${type}-preview`);
-        ghostMesh.materialOptions = {
-            ...ghostMesh.materialOptions,
-            opacity: 0.35,
-            preset: 'custom'
-        };
-        await scene.add(ghostMesh);
-        events.fire('mesh.ghost.added', ghostMesh);
-
+        // Register listeners IMMEDIATELY — do NOT wait for async ghost creation
         canvas.addEventListener('mousemove', onMove);
-        canvas.addEventListener('click', onClick);
+        canvas.addEventListener('pointerdown', onClick);
         canvas.addEventListener('contextmenu', onCancel);
+
+        // Create ghost preview in background (best-effort visual aid)
+        const source: MeshSource = { kind: 'primitive', type };
+        const ghost = new MeshElement(source, `${type}-preview`);
+        ghost.materialOptions = { ...ghost.materialOptions, opacity: 0.4, preset: 'custom' };
+        scene.add(ghost).then(() => {
+            // Only assign if we're still in this placement session
+            if (placementType === type) {
+                ghostMesh = ghost;
+                events.fire('mesh.ghost.added', ghost);
+            } else {
+                ghost.destroy();  // placement was cancelled before ghost loaded
+            }
+        });
     });
 
     events.on('mesh.cancelPlace', cancelPlacement);

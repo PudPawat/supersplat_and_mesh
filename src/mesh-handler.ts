@@ -40,11 +40,26 @@ const initMeshHandler = (scene: Scene, events: Events) => {
 
     // ── add primitive shape ─────────────────────────────────────────────────
     // Fired with optional position (from click-to-place) or just type
+    // Default scales per shape type (scene units are roughly metres)
+    const DEFAULT_SCALE: Record<string, number> = {
+        sphere:   0.25,
+        box:      0.25,
+        cylinder: 0.25,
+        cone:     0.25,
+        capsule:  0.25,
+        torus:    0.25,
+        plane:    0.5,
+        bullet:   0.35,
+        wave:     0.6,
+    };
+
     events.on('mesh.addPrimitive', (type: string, position?: Vec3) => {
         const source: MeshSource = { kind: 'primitive', type };
         const mesh = new MeshElement(source, type);
         scene.add(mesh).then(() => {
             if (position) mesh.setPosition(position);
+            const s = DEFAULT_SCALE[type] ?? 0.25;
+            mesh.setScale(new Vec3(s, s, s));
             registerMesh(mesh);
         });
     });
