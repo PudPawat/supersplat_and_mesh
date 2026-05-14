@@ -1,28 +1,10 @@
 @use 'colors.scss' as *;
 
 // ── Full-width bottom mesh bar ─────────────────────────────────────────────
+// Layout is applied via inline styles in mesh-panel.ts (to beat PCUI defaults)
+// This file only handles children / colors that inline styles can't reach.
 
-#mesh-bar {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 60px;
-    z-index: 90;
-
-    background: $bcg-darkest;
-    border-top: 1px solid $bcg-primary;
-
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 0 10px;
-    gap: 0;
-    overflow: hidden;
-}
-
-// Push the floating bottom toolbar up above this bar
+// Push the existing floating toolbar above our bar
 #bottom-toolbar {
     bottom: 72px !important;
 }

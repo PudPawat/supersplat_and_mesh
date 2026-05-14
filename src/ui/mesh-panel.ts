@@ -7,10 +7,31 @@ import { Tooltips } from './tooltips';
 
 class MeshPanel extends Container {
     constructor(events: Events, tooltips: Tooltips, args = {}) {
-        args = { ...args, id: 'mesh-bar', class: 'mesh-bar-root' };
+        args = { ...args, id: 'mesh-bar' };
         super(args);
-        // Force absolute positioning so PCUI doesn't push canvas around
-        this.dom.style.position = 'absolute';
+
+        // PCUI sets position:relative on all Containers — override every
+        // layout property inline so nothing can beat inline specificity
+        Object.assign(this.dom.style, {
+            position:        'absolute',
+            left:            '0',
+            right:           '0',
+            bottom:          '0',
+            top:             'auto',
+            width:           '100%',
+            height:          '60px',
+            zIndex:          '90',
+            display:         'flex',
+            flexDirection:   'row',
+            alignItems:      'center',
+            padding:         '0 10px',
+            gap:             '0px',
+            overflow:        'hidden',
+            background:      '#1a1a1a',
+            borderTop:       '1px solid #333',
+            boxSizing:       'border-box',
+            flexWrap:        'nowrap',
+        });
 
         // Prevent canvas from receiving pointer events through this bar
         ['pointerdown', 'pointerup', 'pointermove', 'wheel', 'dblclick'].forEach(n =>
@@ -18,12 +39,20 @@ class MeshPanel extends Container {
         );
 
         // ── helper: thin vertical divider ──────────────────────────────────
-        const sep = () => new Container({ class: 'mesh-bar-sep' });
+        const sep = (): void => {
+            const d = document.createElement('div');
+            Object.assign(d.style, { width:'1px', height:'36px', background:'#333', flexShrink:'0', margin:'0 6px' });
+            this.dom.appendChild(d);
+        };
 
         // ── helper: section wrapper ─────────────────────────────────────────
         const section = (id?: string) => {
             const c = new Container({ class: 'mesh-bar-section' });
             if (id) c.dom.id = id;
+            Object.assign(c.dom.style, {
+                display:'flex', flexDirection:'row', alignItems:'center',
+                gap:'4px', padding:'0 6px', flexShrink:'0', position:'relative'
+            });
             return c;
         };
 
@@ -32,6 +61,12 @@ class MeshPanel extends Container {
             const b = new Container({ class: cls });
             b.dom.textContent = icon;
             b.dom.title = title;
+            Object.assign(b.dom.style, {
+                width:'28px', height:'28px', borderRadius:'4px', background:'#2a2a2a',
+                cursor:'pointer', fontSize:'13px', color:'#b3aaac', display:'flex',
+                alignItems:'center', justifyContent:'center', flexShrink:'0',
+                userSelect:'none', position:'relative'
+            });
             return b;
         };
 
@@ -157,16 +192,12 @@ class MeshPanel extends Container {
         matSection.append(captureBtn);
 
         // ══════════════════════════════════════════════════════════════════
-        // ASSEMBLE BAR
+        // ASSEMBLE BAR  (append sections then call sep() between them)
         // ══════════════════════════════════════════════════════════════════
-        this.append(addSection);
-        this.append(sep());
-        this.append(listSection);
-        this.append(sep());
-        this.append(gizmoSection);
-        this.append(sep());
-        this.append(tfSection);
-        this.append(sep());
+        this.append(addSection);  sep();
+        this.append(listSection); sep();
+        this.append(gizmoSection); sep();
+        this.append(tfSection);   sep();
         this.append(matSection);
 
         // ══════════════════════════════════════════════════════════════════
@@ -177,9 +208,9 @@ class MeshPanel extends Container {
         const meshItems = new Map<MeshElement, Container>();
 
         const setSelectionVisible = (on: boolean) => {
-            gizmoSection.dom.classList.toggle('hidden', !on);
-            tfSection.dom.classList.toggle('hidden', !on);
-            matSection.dom.classList.toggle('hidden', !on);
+            [gizmoSection, tfSection, matSection].forEach(s => {
+                s.dom.style.display = on ? 'flex' : 'none';
+            });
             posVec.enabled = rotVec.enabled = sclVec.enabled = on;
         };
         setSelectionVisible(false);
