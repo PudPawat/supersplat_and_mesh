@@ -1,39 +1,108 @@
 @use 'colors.scss' as *;
 
-#mesh-panel {
-    top: 102px;
-    left: 390px;
-    width: 260px;
-    z-index: 100;
-}
+// ── Full-width bottom mesh bar ─────────────────────────────────────────────
 
-.mesh-prim-row {
+#mesh-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    z-index: 90;
+
+    background: $bcg-darkest;
+    border-top: 1px solid $bcg-primary;
+
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 6px 8px;
-    gap: 4px;
-    flex-wrap: wrap;
+    padding: 0 10px;
+    gap: 0;
+    overflow: hidden;
 }
 
-.mesh-prim-label {
-    font-size: 11px;
+// Push the floating bottom toolbar up above this bar
+#bottom-toolbar {
+    bottom: 72px !important;
+}
+
+// ── Section ────────────────────────────────────────────────────────────────
+
+.mesh-bar-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    flex-shrink: 0;
+
+    &.hidden {
+        display: none;
+    }
+}
+
+// Object list section scrolls if many objects
+#mesh-bar-list-section {
+    flex: 0 1 220px;
+    overflow: hidden;
+}
+
+#mesh-bar-list {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    overflow-x: auto;
+    max-width: 180px;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+}
+
+// Transform section takes remaining space
+#mesh-bar-tf {
+    flex: 1 1 auto;
+    gap: 8px;
+}
+
+// ── Separator ──────────────────────────────────────────────────────────────
+
+.mesh-bar-sep {
+    width: 1px;
+    height: 36px;
+    background: $bcg-primary;
+    flex-shrink: 0;
+}
+
+// ── Label ──────────────────────────────────────────────────────────────────
+
+.mesh-bar-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: $clr-disabled;
     flex-shrink: 0;
-    margin-right: 4px;
 }
 
-.mesh-prim-btn {
-    background: $bcg-dark;
+// ── Icon Buttons ───────────────────────────────────────────────────────────
+
+.mesh-bar-btn {
+    width: 30px;
+    height: 30px;
     border-radius: 4px;
-    padding: 4px 8px;
+    background: $bcg-dark;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     color: $clr-default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
 
     &:hover {
-        background: $bcg-darkest;
-        color: $clr-hilight;
+        background: $bcg-light;
+        color: $clr-active;
     }
 
     &.active {
@@ -42,17 +111,114 @@
     }
 }
 
-.collapsed #mesh-panel {
+.mesh-bar-btn-import {
+    font-size: 18px;
+    font-weight: bold;
+    background: $bcg-primary;
+    color: $clr-hilight;
+    &:hover { background: $bcg-light; }
+}
+
+.mesh-bar-mode-btn {
+    font-size: 16px;
+    width: 32px;
+    height: 32px;
+}
+
+// ── Transform rows ─────────────────────────────────────────────────────────
+
+.mesh-bar-tf-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+.mesh-bar-tf-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: $clr-disabled;
+    width: 12px;
+    flex-shrink: 0;
+}
+
+// Make VectorInput compact inside the bar
+.mesh-bar-vec {
+    .pcui-vector-input-element {
+        width: 52px !important;
+    }
+}
+
+// ── Material section ───────────────────────────────────────────────────────
+
+#mesh-bar-mat {
+    flex-shrink: 0;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.mesh-bar-select {
+    width: 80px;
+}
+
+.mesh-bar-slider-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    width: 70px;
+}
+
+.mesh-bar-slider-label {
+    font-size: 9px;
+    color: $clr-disabled;
+    text-transform: uppercase;
+}
+
+.mesh-bar-slider {
+    width: 70px !important;
+}
+
+// ── Mesh object chips in the list ──────────────────────────────────────────
+
+.mesh-bar-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    background: $bcg-dark;
+    border-radius: 4px;
+    padding: 2px 5px;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:hover { background: $bcg-light; }
+
+    &.selected {
+        background: $clr-hilight;
+        .mesh-bar-item-name { color: #000; }
+    }
+}
+
+.mesh-bar-item-name {
+    font-size: 10px;
+    color: $clr-default;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mesh-bar-item-btn {
+    font-size: 10px;
+    color: $clr-disabled;
+    cursor: pointer;
+    padding: 1px 2px;
+    border-radius: 2px;
+    &:hover { color: $clr-active; background: rgba(255,255,255,0.1); }
+}
+
+// Collapsed mode hides bar
+.collapsed #mesh-bar {
     display: none;
-}
-
-#mesh-list {
-    max-height: 200px;
-    overflow: auto;
-}
-
-#mesh-mat-editor {
-    padding: 8px 0;
-    border-top: 1px solid $clr-disabled;
-    margin-top: 4px;
 }

@@ -1,5 +1,5 @@
-import { Container, Label, NumericInput, SelectInput, SliderInput, VectorInput } from '@playcanvas/pcui';
-import { Quat, Vec3 } from 'playcanvas';
+import { Container, Label, SelectInput, SliderInput, VectorInput } from '@playcanvas/pcui';
+import { Vec3 } from 'playcanvas';
 
 import { Events } from '../events';
 import { MeshElement, MeshMaterialPreset } from '../mesh-element';
@@ -7,123 +7,121 @@ import { Tooltips } from './tooltips';
 
 class MeshPanel extends Container {
     constructor(events: Events, tooltips: Tooltips, args = {}) {
-        args = { ...args, id: 'mesh-panel', class: 'panel' };
+        args = { ...args, id: 'mesh-bar' };
         super(args);
 
+        // Prevent canvas from receiving pointer events through this bar
         ['pointerdown', 'pointerup', 'pointermove', 'wheel', 'dblclick'].forEach(n =>
             this.dom.addEventListener(n, (e: Event) => e.stopPropagation())
         );
 
-        // ── header ─────────────────────────────────────────────────────────
-        const header   = new Container({ class: 'panel-header' });
-        const icon     = new Label({ class: 'panel-header-icon', text: '' });
-        const label    = new Label({ class: 'panel-header-label', text: 'Mesh Objects' });
-        const importBtn = new Container({ class: 'panel-header-button' });
-        importBtn.dom.textContent = '+';
-        importBtn.dom.title = 'Import GLB/GLTF';
-        importBtn.on('click', () => events.fire('mesh.import'));
-        header.append(icon); header.append(label); header.append(importBtn);
-        this.append(header);
+        // ── helper: thin vertical divider ──────────────────────────────────
+        const sep = () => new Container({ class: 'mesh-bar-sep' });
 
-        // ── shape buttons (Option A — click-to-place) ───────────────────────
-        const primRow   = new Container({ class: 'mesh-prim-row' });
-        const primLabel = new Label({ class: 'mesh-prim-label', text: 'Add shape:' });
-        primRow.append(primLabel);
+        // ── helper: section wrapper ─────────────────────────────────────────
+        const section = (id?: string) => {
+            const c = new Container({ class: 'mesh-bar-section' });
+            if (id) c.dom.id = id;
+            return c;
+        };
+
+        // ── helper: icon button ─────────────────────────────────────────────
+        const iconBtn = (icon: string, title: string, cls = 'mesh-bar-btn') => {
+            const b = new Container({ class: cls });
+            b.dom.textContent = icon;
+            b.dom.title = title;
+            return b;
+        };
+
+        // ══════════════════════════════════════════════════════════════════
+        // SECTION 1 — Add shapes
+        // ══════════════════════════════════════════════════════════════════
+        const addSection = section();
+        addSection.append(new Label({ class: 'mesh-bar-label', text: 'Add' }));
 
         const shapes = [
-            { type: 'sphere',   icon: '⬤' },
-            { type: 'box',      icon: '⬛' },
-            { type: 'cylinder', icon: '⬭' },
-            { type: 'cone',     icon: '▲' },
-            { type: 'bullet',   icon: '🔫' },
-            { type: 'wave',     icon: '〰' },
+            { type: 'sphere',   icon: '⬤',  title: 'Sphere'   },
+            { type: 'box',      icon: '⬛',  title: 'Box'      },
+            { type: 'cylinder', icon: '⬭',  title: 'Cylinder' },
+            { type: 'cone',     icon: '▲',  title: 'Cone'     },
+            { type: 'bullet',   icon: '🔫', title: 'Bullet'   },
+            { type: 'wave',     icon: '〰', title: 'Wave ring' },
         ];
-        shapes.forEach(({ type, icon }) => {
-            const btn = new Container({ class: 'mesh-prim-btn' });
-            btn.dom.textContent = icon;
-            btn.dom.title = `Place ${type} — click in viewport`;
-            // Fire beginPlace so click-to-place mode activates
+        shapes.forEach(({ type, icon, title }) => {
+            const btn = iconBtn(icon, `Place ${title}`);
             btn.on('click', () => events.fire('mesh.beginPlace', type));
-            primRow.append(btn);
+            addSection.append(btn);
         });
-        this.append(primRow);
 
-        // ── mesh list ───────────────────────────────────────────────────────
-        const listContainer = new Container({ id: 'mesh-list' });
-        this.append(listContainer);
+        const importBtn = iconBtn('+', 'Import GLB/GLTF', 'mesh-bar-btn mesh-bar-btn-import');
+        importBtn.on('click', () => events.fire('mesh.import'));
+        addSection.append(importBtn);
 
-        // ── gizmo mode toolbar (Option C) ────────────────────────────────────
-        const gizmoRow = new Container({ class: 'mesh-prim-row' });
-        const gizmoLabel = new Label({ class: 'mesh-prim-label', text: 'Transform:' });
-        gizmoRow.append(gizmoLabel);
+        // ══════════════════════════════════════════════════════════════════
+        // SECTION 2 — Object list / selection indicator
+        // ══════════════════════════════════════════════════════════════════
+        const listSection = section('mesh-bar-list-section');
+        listSection.append(new Label({ class: 'mesh-bar-label', text: 'Objects' }));
+        const listContainer = new Container({ id: 'mesh-bar-list' });
+        listSection.append(listContainer);
+
+        // ══════════════════════════════════════════════════════════════════
+        // SECTION 3 — Gizmo mode  (hidden until mesh selected)
+        // ══════════════════════════════════════════════════════════════════
+        const gizmoSection = section('mesh-bar-gizmo');
+        gizmoSection.append(new Label({ class: 'mesh-bar-label', text: 'Mode' }));
 
         const gizmoModes = [
-            { mode: 'translate', icon: '✥', title: 'Move (T)' },
+            { mode: 'translate', icon: '✥', title: 'Move (T)'   },
             { mode: 'rotate',    icon: '↻', title: 'Rotate (R)' },
-            { mode: 'scale',     icon: '⇲', title: 'Scale (S)' },
+            { mode: 'scale',     icon: '⇲', title: 'Scale (S)'  },
         ];
         const gizmoBtns: Map<string, Container> = new Map();
         gizmoModes.forEach(({ mode, icon, title }) => {
-            const btn = new Container({ class: 'mesh-prim-btn' });
-            btn.dom.textContent = icon;
-            btn.dom.title = title;
+            const btn = iconBtn(icon, title, 'mesh-bar-btn mesh-bar-mode-btn');
             btn.on('click', () => {
                 gizmoBtns.forEach((b, m) => b.dom.classList.toggle('active', m === mode));
                 events.fire('mesh.gizmo.mode', mode);
             });
-            gizmoRow.append(btn);
+            gizmoSection.append(btn);
             gizmoBtns.set(mode, btn);
         });
-        // Default: translate active
         gizmoBtns.get('translate')?.dom.classList.add('active');
-        this.append(gizmoRow);
 
-        // ── transform section (Option B) ─────────────────────────────────────
-        const tfSection = new Container({ class: 'panel-header' });
-        const tfLabel   = new Label({ class: 'panel-header-label', text: 'Transform' });
-        tfSection.append(tfLabel);
-        this.append(tfSection);
+        // ══════════════════════════════════════════════════════════════════
+        // SECTION 4 — Transform  (hidden until mesh selected)
+        // ══════════════════════════════════════════════════════════════════
+        const tfSection = section('mesh-bar-tf');
 
-        const makeRow = (lbl: string) => {
-            const row = new Container({ class: 'color-panel-row' });
-            row.append(new Label({ text: lbl, class: 'color-panel-row-label' }));
-            return row;
+        const makeVec = (lbl: string, step = 0.01, def: [number,number,number] = [0,0,0]) => {
+            const row = new Container({ class: 'mesh-bar-tf-row' });
+            row.append(new Label({ class: 'mesh-bar-tf-label', text: lbl }));
+            const vec = new VectorInput({
+                dimensions: 3,
+                precision: 3,
+                step,
+                placeholder: ['X','Y','Z'],
+                value: def,
+                enabled: false,
+                class: 'mesh-bar-vec',
+            });
+            row.append(vec);
+            tfSection.append(row);
+            return vec;
         };
 
-        const posRow = makeRow('Position');
-        const posVec = new VectorInput({ dimensions: 3, precision: 3,
-            placeholder: ['X', 'Y', 'Z'], value: [0, 0, 0], enabled: false });
-        posRow.append(posVec);
-        this.append(posRow);
+        const posVec = makeVec('P', 0.01, [0, 0, 0]);
+        const rotVec = makeVec('R', 1,    [0, 0, 0]);
+        const sclVec = makeVec('S', 0.01, [1, 1, 1]);
 
-        const rotRow = makeRow('Rotation');
-        const rotVec = new VectorInput({ dimensions: 3, precision: 1,
-            placeholder: ['X', 'Y', 'Z'], value: [0, 0, 0], enabled: false });
-        rotRow.append(rotVec);
-        this.append(rotRow);
+        // ══════════════════════════════════════════════════════════════════
+        // SECTION 5 — Material  (hidden until mesh selected)
+        // ══════════════════════════════════════════════════════════════════
+        const matSection = section('mesh-bar-mat');
+        matSection.append(new Label({ class: 'mesh-bar-label', text: 'Material' }));
 
-        const sclRow = makeRow('Scale');
-        const sclVec = new VectorInput({ dimensions: 3, precision: 3,
-            placeholder: ['X', 'Y', 'Z'], value: [1, 1, 1], enabled: false });
-        sclRow.append(sclVec);
-        this.append(sclRow);
-
-        // ── material editor ─────────────────────────────────────────────────
-        const matEditor = new Container({ id: 'mesh-mat-editor' });
-        const matHeaderRow = new Container({ class: 'panel-header' });
-        const matHeader    = new Label({ class: 'panel-header-label', text: 'Material' });
-        const captureBtn   = new Container({ class: 'panel-header-button' });
-        captureBtn.dom.textContent = '↺';
-        captureBtn.dom.title = 'Capture scene reflection from object position';
-        captureBtn.on('click', () => selectedMesh?.captureReflection());
-        matHeaderRow.append(matHeader); matHeaderRow.append(captureBtn);
-        matEditor.append(matHeaderRow);
-
-        const makeSlider = (min: number, max: number, step: number, value: number) =>
-            new SliderInput({ class: 'color-panel-row-slider', min, max, step, value });
-
-        const presetRow    = makeRow('Preset');
         const presetSelect = new SelectInput({
+            class: 'mesh-bar-select',
             options: [
                 { v: 'glass',   t: 'Glass'   },
                 { v: 'mirror',  t: 'Mirror'  },
@@ -133,35 +131,60 @@ class MeshPanel extends Container {
                 { v: 'wave',    t: 'Wave'    },
                 { v: 'custom',  t: 'Custom'  },
             ],
-            value: 'mirror'
+            value: 'mirror',
         });
-        presetRow.append(presetSelect);
-        matEditor.append(presetRow);
+        matSection.append(presetSelect);
 
-        const opacityRow  = makeRow('Opacity');      const opacitySlider = makeSlider(0, 1, 0.01, 1.0);
-        const reflRow     = makeRow('Reflectivity'); const reflSlider    = makeSlider(0, 1, 0.01, 1.0);
-        const roughRow    = makeRow('Roughness');    const roughSlider   = makeSlider(0, 1, 0.01, 0.0);
-        const metalRow    = makeRow('Metalness');    const metalSlider   = makeSlider(0, 1, 0.01, 1.0);
+        const makeSlider = (label: string, min: number, max: number, val: number) => {
+            const row = new Container({ class: 'mesh-bar-slider-row' });
+            row.append(new Label({ class: 'mesh-bar-slider-label', text: label }));
+            const s = new SliderInput({ class: 'mesh-bar-slider', min, max, step: 0.01, value: val });
+            row.append(s);
+            matSection.append(row);
+            return s;
+        };
 
-        opacityRow.append(opacitySlider); matEditor.append(opacityRow);
-        reflRow.append(reflSlider);       matEditor.append(reflRow);
-        roughRow.append(roughSlider);     matEditor.append(roughRow);
-        metalRow.append(metalSlider);     matEditor.append(metalRow);
-        this.append(matEditor);
+        const opacitySlider  = makeSlider('Opacity',      0, 1, 1.0);
+        const reflSlider     = makeSlider('Reflect',      0, 1, 1.0);
+        const roughSlider    = makeSlider('Rough',        0, 1, 0.0);
+        const metalSlider    = makeSlider('Metal',        0, 1, 1.0);
 
-        // ── state ───────────────────────────────────────────────────────────
+        // capture btn
+        const captureBtn = iconBtn('↺', 'Re-capture scene reflection', 'mesh-bar-btn');
+        captureBtn.on('click', () => selectedMesh?.captureReflection());
+        matSection.append(captureBtn);
+
+        // ══════════════════════════════════════════════════════════════════
+        // ASSEMBLE BAR
+        // ══════════════════════════════════════════════════════════════════
+        this.append(addSection);
+        this.append(sep());
+        this.append(listSection);
+        this.append(sep());
+        this.append(gizmoSection);
+        this.append(sep());
+        this.append(tfSection);
+        this.append(sep());
+        this.append(matSection);
+
+        // ══════════════════════════════════════════════════════════════════
+        // STATE
+        // ══════════════════════════════════════════════════════════════════
         let selectedMesh: MeshElement | null = null;
         let panelUpdating = false;
         const meshItems = new Map<MeshElement, Container>();
 
-        // ── helpers ─────────────────────────────────────────────────────────
-        const setTfEnabled = (on: boolean) => {
+        const setSelectionVisible = (on: boolean) => {
+            gizmoSection.dom.classList.toggle('hidden', !on);
+            tfSection.dom.classList.toggle('hidden', !on);
+            matSection.dom.classList.toggle('hidden', !on);
             posVec.enabled = rotVec.enabled = sclVec.enabled = on;
         };
+        setSelectionVisible(false);
 
         const v3 = (v: Vec3): [number, number, number] => [v.x, v.y, v.z];
 
-        const updateTfPanel = (mesh: MeshElement) => {
+        const updateTf = (mesh: MeshElement) => {
             panelUpdating = true;
             posVec.value = v3(mesh.getPosition());
             rotVec.value = v3(mesh.getRotationEuler());
@@ -174,9 +197,9 @@ class MeshPanel extends Container {
             meshItems.forEach((item, m) =>
                 item.dom.classList.toggle('selected', m === mesh)
             );
-            setTfEnabled(!!mesh);
+            setSelectionVisible(!!mesh);
             if (mesh) {
-                updateTfPanel(mesh);
+                updateTf(mesh);
                 const o = mesh.materialOptions;
                 presetSelect.value  = o.preset;
                 opacitySlider.value = o.opacity;
@@ -188,26 +211,21 @@ class MeshPanel extends Container {
         };
 
         const addMeshItem = (mesh: MeshElement) => {
-            const item   = new Container({ class: ['splat-item', 'visible'] });
-            const text   = new Label({ class: 'splat-item-text', text: mesh.name });
-            const visBtn = new Container({ class: 'splat-item-visible' });
-            visBtn.dom.textContent = '👁';
-            visBtn.dom.title = 'Toggle visibility';
-            const delBtn = new Container({ class: 'splat-item-delete' });
-            delBtn.dom.textContent = '✕';
-            delBtn.dom.title = 'Remove';
+            const item   = new Container({ class: 'mesh-bar-item' });
+            const text   = new Label({ class: 'mesh-bar-item-name', text: mesh.name });
+            const visBtn = iconBtn('👁', 'Toggle visibility', 'mesh-bar-item-btn');
+            const delBtn = iconBtn('✕', 'Remove',             'mesh-bar-item-btn');
 
             item.append(text); item.append(visBtn); item.append(delBtn);
             listContainer.append(item);
             meshItems.set(mesh, item);
 
             item.on('click', () => selectMesh(mesh));
-
             visBtn.on('click', (e: Event) => {
                 e.stopPropagation();
                 mesh.visible = !mesh.visible;
+                visBtn.dom.style.opacity = mesh.visible ? '1' : '0.35';
             });
-
             delBtn.on('click', (e: Event) => {
                 e.stopPropagation();
                 if (selectedMesh === mesh) selectMesh(null);
@@ -218,7 +236,7 @@ class MeshPanel extends Container {
             });
         };
 
-        // ── transform inputs → mesh ─────────────────────────────────────────
+        // ── transform inputs → mesh ─────────────────────────────────────
         const applyPos = () => {
             if (panelUpdating || !selectedMesh) return;
             const [x, y, z] = posVec.value as number[];
@@ -231,7 +249,7 @@ class MeshPanel extends Container {
             selectedMesh.setRotationEuler(new Vec3(x, y, z));
             events.fire('mesh.transform.changed', selectedMesh);
         };
-        const applySclVec = () => {
+        const applyScl = () => {
             if (panelUpdating || !selectedMesh) return;
             const [x, y, z] = sclVec.value as number[];
             selectedMesh.setScale(new Vec3(x, y, z));
@@ -240,9 +258,9 @@ class MeshPanel extends Container {
 
         posVec.inputs.forEach(i => i.on('change', applyPos));
         rotVec.inputs.forEach(i => i.on('change', applyRot));
-        sclVec.inputs.forEach(i => i.on('change', applySclVec));
+        sclVec.inputs.forEach(i => i.on('change', applyScl));
 
-        // ── material inputs → mesh ──────────────────────────────────────────
+        // ── material inputs → mesh ──────────────────────────────────────
         const applyMat = () => {
             if (!selectedMesh) return;
             selectedMesh.setMaterialOptions({
@@ -269,35 +287,30 @@ class MeshPanel extends Container {
         roughSlider.on('change', applyMat);
         metalSlider.on('change', applyMat);
 
-        // ── event listeners ─────────────────────────────────────────────────
-
-        // new mesh created (placement or import)
+        // ── events ──────────────────────────────────────────────────────
         events.on('mesh.added', (mesh: MeshElement) => {
             addMeshItem(mesh);
             selectMesh(mesh);
         });
 
-        // gizmo moved the mesh → sync panel
         events.on('mesh.transform.changed', (mesh: MeshElement) => {
-            if (mesh === selectedMesh) updateTfPanel(mesh);
+            if (mesh === selectedMesh) updateTf(mesh);
         });
 
-        // click-selection from viewport
-        events.on('mesh.select', (mesh: MeshElement | null) => {
-            selectMesh(mesh);
-        });
+        events.on('mesh.select', (mesh: MeshElement | null) => selectMesh(mesh));
 
-        // keyboard shortcuts for gizmo mode
+        // keyboard gizmo shortcuts
         document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (!selectedMesh) return;
             if (e.target instanceof HTMLInputElement) return;
-            if (e.key === 't' || e.key === 'T') {
+            const k = e.key.toLowerCase();
+            if (k === 't') {
                 gizmoBtns.forEach((b, m) => b.dom.classList.toggle('active', m === 'translate'));
                 events.fire('mesh.gizmo.mode', 'translate');
-            } else if (e.key === 'r' || e.key === 'R') {
+            } else if (k === 'r') {
                 gizmoBtns.forEach((b, m) => b.dom.classList.toggle('active', m === 'rotate'));
                 events.fire('mesh.gizmo.mode', 'rotate');
-            } else if (e.key === 's' || e.key === 'S') {
+            } else if (k === 's') {
                 gizmoBtns.forEach((b, m) => b.dom.classList.toggle('active', m === 'scale'));
                 events.fire('mesh.gizmo.mode', 'scale');
             } else if (e.key === 'Escape') {
