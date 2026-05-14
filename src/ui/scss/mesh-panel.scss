@@ -1,0 +1,53 @@
+@use 'colors.scss' as *;
+
+#mesh-panel {
+    top: 102px;
+    left: 390px;
+    width: 260px;
+    z-index: 100;
+}
+
+.mesh-prim-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 8px;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.mesh-prim-label {
+    font-size: 11px;
+    color: $clr-disabled;
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+.mesh-prim-btn {
+    background: $bcg-dark;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: $clr-default;
+
+    &:hover {
+        background: $bcg-darkest;
+        color: $clr-hilight;
+    }
+}
+
+.collapsed #mesh-panel {
+    display: none;
+}
+
+#mesh-list {
+    max-height: 200px;
+    overflow: auto;
+}
+
+#mesh-mat-editor {
+    padding: 8px 0;
+    border-top: 1px solid $clr-disabled;
+    margin-top: 4px;
+}

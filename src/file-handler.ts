@@ -4,6 +4,7 @@ import { CreateDropHandler } from './drop-handler';
 import { ElementType } from './element';
 import { Events } from './events';
 import { BrowserFileSystem, MappedReadFileSystem } from './io';
+import { isMeshFile } from './mesh-handler';
 import { Scene } from './scene';
 import { Splat } from './splat';
 import { serializePly, serializePlyCompressed, SerializeSettings, serializeSog, serializeSplat, serializeViewer, SogSettings, ViewerExportSettings } from './splat-serialize';
@@ -103,7 +104,9 @@ const allImportTypes = {
         'application/x-gaussian-splat': ['.json', '.sog', '.splat', '.ksplat', '.spz'],
         'image/webp': ['.webp'],
         'application/json': ['.lcc'],
-        'application/octet-stream': ['.bin'],
+        'application/octet-stream': ['.bin', '.glb'],
+        'model/gltf+json': ['.gltf'],
+        'model/obj': ['.obj'],
         'text/plain': ['.txt']
     }
 };
@@ -389,13 +392,20 @@ const initFileHandler = (scene: Scene, events: Events, dropTarget: HTMLElement) 
 
     // create the file drag & drop handler
     CreateDropHandler(dropTarget, (entries, shift) => {
-        importFiles(entries.map((e) => {
-            return {
-                filename: e.filename,
-                contents: e.file,
-                handle: e.handle
-            };
-        }));
+        const meshEntries = entries.filter(e => isMeshFile(e.filename));
+        const splatEntries = entries.filter(e => !isMeshFile(e.filename));
+
+        meshEntries.forEach(e => events.fire('drop.file', e.file));
+
+        if (splatEntries.length > 0) {
+            importFiles(splatEntries.map((e) => {
+                return {
+                    filename: e.filename,
+                    contents: e.file,
+                    handle: e.handle
+                };
+            }));
+        }
     });
 
     // get the list of visible splats containing gaussians

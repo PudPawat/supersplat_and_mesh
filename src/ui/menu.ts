@@ -194,6 +194,10 @@ class Menu extends Container {
                 await events.invoke('scene.import');
             }
         }, {
+            text: 'Import Mesh (GLB/GLTF/OBJ)…',
+            icon: createSvg(sceneImport),
+            onSelect: () => events.fire('mesh.import')
+        }, {
             text: localize('menu.file.export'),
             icon: createSvg(sceneExport),
             subMenu: exportMenuPanel

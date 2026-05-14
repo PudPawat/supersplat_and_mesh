@@ -75,6 +75,7 @@ class Scene {
     app: PCApp;
     worldLayer: Layer;
     splatLayer: Layer;
+    meshLayer: Layer;
     gizmoLayer: Layer;
     sceneState = [new SceneState(), new SceneState()];
     elements: Element[] = [];
@@ -95,6 +96,8 @@ class Scene {
     assetLoader: AssetLoader;
     camera: Camera;
     cameraPoseGizmos: CameraPoseGizmos;
+
+    get ssrPass() { return (this.camera as any)?.ssrPass ?? null; }
     splatOverlay: SplatOverlay;
     grid: Grid;
     outline: Outline;
@@ -202,11 +205,15 @@ class Scene {
         });
         this.splatLayer.customCalculateSortValues = specialSort;
 
+        // mesh layer — renders AFTER splatLayer so mesh objects appear in front of 3DGS
+        this.meshLayer = new Layer({ name: 'Mesh' });
+
         // gizmo layer
         this.gizmoLayer = new Layer({ name: 'Gizmo' });
 
         const layers = this.app.scene.layers;
         layers.push(this.splatLayer);
+        layers.push(this.meshLayer);
         layers.push(this.gizmoLayer);
 
         this.dataProcessor = new DataProcessor(this.app.graphicsDevice);

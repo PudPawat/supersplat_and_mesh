@@ -32,6 +32,7 @@ import { Element, ElementType } from './element';
 import { Picker } from './picker';
 import { Serializer } from './serializer';
 import { vertexShader, fragmentShader } from './shaders/blit-shader';
+import { SSRPass } from './ssr-pass';
 import { Splat } from './splat';
 import { TweenValue } from './tween-value';
 import { ShaderQuad, SimpleRenderPass } from './utils/simple-render-pass';
@@ -98,8 +99,10 @@ class Camera extends Element {
     clearPass: RenderPass;
     mainPass: RenderPassForward;
     splatPass: RenderPassForward;
+    meshPass: RenderPassForward;
     gizmoPass: RenderPassForward;
     finalPass: SimpleRenderPass;
+    ssrPass: SSRPass | null = null;
 
     // overridden target size
     targetSizeOverride: { width: number, height: number } = null;
@@ -296,6 +299,7 @@ class Camera extends Element {
         this.mainCamera.camera.layers = [
             scene.worldLayer.id,
             scene.splatLayer.id,
+            scene.meshLayer.id,
             scene.gizmoLayer.id
         ];
 
@@ -311,6 +315,7 @@ class Camera extends Element {
         this.clearPass = new RenderPass(device);
         this.mainPass = new RenderPassForward(device, composition, app.scene, renderer);
         this.splatPass = new RenderPassForward(device, composition, app.scene, renderer);
+        this.meshPass = new RenderPassForward(device, composition, app.scene, renderer);
         this.gizmoPass = new RenderPassForward(device, composition, app.scene, renderer);
         this.finalPass = new SimpleRenderPass(device,
             new ShaderQuad(device, vertexShader, fragmentShader, 'final-blit'), {
@@ -423,6 +428,7 @@ class Camera extends Element {
         this.clearPass?.destroy();
         this.mainPass?.destroy();
         this.splatPass?.destroy();
+        this.meshPass?.destroy();
         this.gizmoPass?.destroy();
         this.finalPass?.destroy();
         this.camera.framePasses = null;
@@ -537,6 +543,11 @@ class Camera extends Element {
             this.splatPass.addLayer(this.camera, scene.splatLayer, false, false);
             this.splatPass.addLayer(this.camera, scene.splatLayer, true, false);
 
+            // configure mesh pass - renders after splat so objects appear inside the 3DGS scene
+            this.meshPass.init(this.mainTarget);
+            this.meshPass.addLayer(this.camera, scene.meshLayer, false, false);
+            this.meshPass.addLayer(this.camera, scene.meshLayer, true, false);
+
             // configure gizmo pass
             this.gizmoPass.init(this.mainTarget);
             this.gizmoPass.addLayer(this.camera, scene.gizmoLayer, false, false);
@@ -546,8 +557,13 @@ class Camera extends Element {
 
             this.finalPass.init(null);
 
+            // SSR: create pass and snapshot blit between splatPass and meshPass
+            if (!this.ssrPass) {
+                this.ssrPass = new SSRPass(scene, width, height);
+            }
+
             // assign render passes to camera
-            this.camera.framePasses = [this.clearPass, this.mainPass, this.splatPass, this.gizmoPass, this.finalPass];
+            this.camera.framePasses = [this.clearPass, this.mainPass, this.splatPass, this.meshPass, this.gizmoPass, this.finalPass];
         } else {
             // resize existing render targets
             const { splatTarget, colorTarget, workTarget } = this;
@@ -599,6 +615,13 @@ class Camera extends Element {
         // update ortho height
         camera.orthoHeight = this.distanceTween.value.distance * this.sceneRadius / this.fovFactor * (this.fov / 90) * (camera.horizontalFov ? targetSize.height / targetSize.width : 1);
         camera.camera._updateViewProjMat();
+
+        // SSR: snapshot the scene before meshPass, update per-frame uniforms
+        if (this.ssrPass && this.colorTarget) {
+            const vp = new Mat4().mul2(camera.projectionMatrix, camera.viewMatrix);
+            this.ssrPass.captureSceneSnapshot(this.colorTarget.colorBuffer);
+            this.ssrPass.updateUniforms(vp, targetSize.width, targetSize.height);
+        }
     }
 
     fitClippingPlanes(cameraPosition: Vec3, forwardVec: Vec3) {

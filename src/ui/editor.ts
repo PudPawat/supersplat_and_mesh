@@ -6,6 +6,7 @@ import { Events } from '../events';
 import { AboutPopup } from './about-popup';
 import { BottomToolbar } from './bottom-toolbar';
 import { ColorPanel } from './color-panel';
+import { MeshPanel } from './mesh-panel';
 import { ExportPopup } from './export-popup';
 import { ImageSettingsDialog } from './image-settings-dialog';
 import { localize, localizeInit } from './localization';
@@ -123,6 +124,7 @@ class EditorUI {
         const scenePanel = new ScenePanel(events, tooltips);
         const viewPanel = new ViewPanel(events, tooltips);
         const colorPanel = new ColorPanel(events, tooltips);
+        const meshPanel = new MeshPanel(events, tooltips);
         const bottomToolbar = new BottomToolbar(events, tooltips);
         const rightToolbar = new RightToolbar(events, tooltips);
         const modeToggle = new ModeToggle(events, tooltips);
@@ -135,6 +137,7 @@ class EditorUI {
         canvasContainer.append(scenePanel);
         canvasContainer.append(viewPanel);
         canvasContainer.append(colorPanel);
+        canvasContainer.append(meshPanel);
         canvasContainer.append(bottomToolbar);
         canvasContainer.append(rightToolbar);
         canvasContainer.append(modeToggle);

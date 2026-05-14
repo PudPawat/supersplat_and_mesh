@@ -8,6 +8,8 @@ import { EditHistory } from './edit-history';
 import { registerEditorEvents } from './editor';
 import { Events } from './events';
 import { initFileHandler } from './file-handler';
+import { initMeshHandler } from './mesh-handler';
+import { setupMeshLighting } from './mesh-lighting';
 import { registerIframeApi } from './iframe-api';
 import { registerPlySequenceEvents } from './ply-sequence';
 import { registerPublishEvents } from './publish';
@@ -251,9 +253,14 @@ const main = async () => {
     registerDocEvents(scene, events);
     registerRenderEvents(scene, events);
     initFileHandler(scene, events, editorUI.appContainer.dom);
+    initMeshHandler(scene, events);
+    setupMeshLighting(scene);
 
     // load async models
     scene.start();
+
+    // default mesh: sphere — delay so scene is fully started
+    setTimeout(() => events.fire('mesh.addPrimitive', 'sphere'), 300);
 
     // handle load params
     const loadList = url.searchParams.getAll('load');
