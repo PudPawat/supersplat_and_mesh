@@ -78,6 +78,14 @@ class MeshGizmo {
                 // Remove the blocker — pointerup bubbles normally so the camera
                 // controller can reset its pressedButton state.
                 canvas.removeEventListener('pointermove', blockMove, true);
+
+                // Re-capture reflection probe at the new world position.
+                // The SSR path is always live (per-frame screen-space), so skip
+                // the expensive async probe when SSR is active.
+                const ssrActive = !!(scene as any).ssrPass?.ssrSceneTexture;
+                if (!ssrActive && this.mesh) {
+                    this.mesh.captureReflection();
+                }
             });
 
             g.on('transform:move', () => {
