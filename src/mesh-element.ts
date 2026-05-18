@@ -256,7 +256,16 @@ class MeshElement extends Element {
 
     private _applyToRender(entity: Entity) {
         const r = (entity as any).render;
-        if (r?.meshInstances) {
+        if (!r) return;
+
+        // Move every render component into meshLayer so it draws AFTER the
+        // splat layer (splatLayer → meshLayer ordering is set up in scene.ts).
+        const scene = this.scene as Scene;
+        if (scene?.meshLayer) {
+            r.layers = [scene.meshLayer.id];
+        }
+
+        if (r.meshInstances) {
             for (const mi of r.meshInstances) {
                 mi.material = this._material as unknown as Material;
             }
