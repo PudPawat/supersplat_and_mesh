@@ -6,9 +6,8 @@ import { MeshElement, MeshMaterialPreset } from '../mesh-element';
 import { Tooltips } from './tooltips';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MeshPanel — expandable bottom tab panel (same pattern as TimelinePanel /
-// DataPanel).  Hidden by default; shown when the MESH tab in the status bar
-// is toggled.
+// MeshPanel — vertical scrollable panel, shown when MESH tab is active.
+// Sections: Add Shapes | Objects | Gizmo Mode | Transform | Material
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MeshPanel extends Container {
@@ -16,157 +15,204 @@ class MeshPanel extends Container {
         args = { ...args, id: 'mesh-panel' };
         super(args);
 
-        // Prevent clicks / scroll from reaching the canvas / camera controller
+        // Stop pointer events from leaking to the canvas
         ['pointerdown', 'pointerup', 'pointermove', 'wheel', 'dblclick'].forEach(n =>
             this.dom.addEventListener(n, (e: Event) => e.stopPropagation())
         );
 
-        // ── tiny helpers ────────────────────────────────────────────────────
+        // ── Helpers ─────────────────────────────────────────────────────────
 
-        // icon/text button
+        // Small caps section heading
+        const heading = (text: string): HTMLElement => {
+            const h = document.createElement('div');
+            h.className = 'mp-heading';
+            h.textContent = text;
+            return h;
+        };
+
+        // Thin horizontal rule between sections
+        const rule = (): HTMLElement => {
+            const r = document.createElement('div');
+            r.className = 'mp-rule';
+            return r;
+        };
+
+        // Icon / emoji button
         const iconBtn = (icon: string, title: string): HTMLElement => {
             const b = document.createElement('div');
-            b.className = 'mesh-btn';
+            b.className = 'mp-btn';
             b.textContent = icon;
             b.title = title;
             return b;
         };
 
-        // small caps label
-        const capsLabel = (text: string): HTMLElement => {
-            const l = document.createElement('span');
-            l.className = 'mesh-caps';
-            l.textContent = text;
-            return l;
+        // Scrollable content wrapper (the actual scroller)
+        const scroll = document.createElement('div');
+        scroll.id = 'mesh-panel-scroll';
+        this.dom.appendChild(scroll);
+
+        // Helper: append a section into the scroll area
+        const section = (id?: string): HTMLElement => {
+            const s = document.createElement('div');
+            s.className = 'mp-section';
+            if (id) s.id = id;
+            scroll.appendChild(s);
+            return s;
         };
 
-        // thin vertical separator
-        const sep = (): HTMLElement => {
-            const d = document.createElement('div');
-            d.className = 'mesh-sep';
-            return d;
-        };
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 1 — Add shapes
+        // ══════════════════════════════════════════════════════════════════════
+        const addSec = section('mp-add');
+        addSec.appendChild(heading('Add Shape'));
 
-        // group wrapper
-        const group = (id?: string): HTMLElement => {
-            const g = document.createElement('div');
-            g.className = 'mesh-group';
-            if (id) g.id = id;
-            return g;
-        };
-
-        // ── ROW 1: Add + Objects + Mode ─────────────────────────────────────
-        const row1 = document.createElement('div');
-        row1.className = 'mesh-row';
-
-        // ── group: Add shapes ──
-        const addGrp = group();
-        addGrp.appendChild(capsLabel('Add'));
+        const shapeRow = document.createElement('div');
+        shapeRow.className = 'mp-btn-row';
 
         const shapes = [
-            { type: 'sphere',   icon: '⬤', title: 'Sphere'   },
-            { type: 'box',      icon: '⬛', title: 'Box'      },
-            { type: 'cylinder', icon: '⬭', title: 'Cylinder' },
-            { type: 'cone',     icon: '▲', title: 'Cone'     },
-            { type: 'bullet',   icon: '🔫', title: 'Bullet'  },
-            { type: 'wave',     icon: '〰', title: 'Wave'    },
+            { type: 'sphere',   icon: '⬤',  title: 'Sphere'   },
+            { type: 'box',      icon: '⬛',  title: 'Box'      },
+            { type: 'cylinder', icon: '⬭',  title: 'Cylinder' },
+            { type: 'cone',     icon: '▲',  title: 'Cone'     },
+            { type: 'bullet',   icon: '🔫', title: 'Bullet'   },
+            { type: 'wave',     icon: '〰', title: 'Wave'     },
         ];
 
         shapes.forEach(({ type, icon, title }) => {
             const btn = iconBtn(icon, `Place ${title}`);
-            btn.addEventListener('click', () => events.fire('mesh.beginPlace', type));
-            addGrp.appendChild(btn);
+            const lbl = document.createElement('span');
+            lbl.className = 'mp-btn-label';
+            lbl.textContent = title;
+            const wrap = document.createElement('div');
+            wrap.className = 'mp-shape-wrap';
+            wrap.appendChild(btn);
+            wrap.appendChild(lbl);
+            wrap.addEventListener('click', () => events.fire('mesh.beginPlace', type));
+            shapeRow.appendChild(wrap);
         });
+        addSec.appendChild(shapeRow);
+
+        // Import + Car buttons
+        const importRow = document.createElement('div');
+        importRow.className = 'mp-btn-row';
 
         const importBtn = iconBtn('+', 'Import GLB / GLTF file');
-        importBtn.classList.add('mesh-btn-accent');
-        importBtn.style.fontSize = '18px';
-        importBtn.addEventListener('click', () => events.fire('mesh.import'));
-        addGrp.appendChild(importBtn);
+        importBtn.classList.add('mp-btn-accent');
+        importBtn.style.fontSize = '20px';
+        const importLbl = document.createElement('span');
+        importLbl.className = 'mp-btn-label';
+        importLbl.textContent = 'Import';
+        const importWrap = document.createElement('div');
+        importWrap.className = 'mp-shape-wrap';
+        importWrap.appendChild(importBtn);
+        importWrap.appendChild(importLbl);
+        importWrap.addEventListener('click', () => events.fire('mesh.import'));
 
         const carBtn = iconBtn('🚗', 'Load Audi R8 sample car');
-        carBtn.style.fontSize = '17px';
-        carBtn.addEventListener('click', () => {
+        carBtn.style.fontSize = '18px';
+        const carLbl = document.createElement('span');
+        carLbl.className = 'mp-btn-label';
+        carLbl.textContent = 'Audi R8';
+        const carWrap = document.createElement('div');
+        carWrap.className = 'mp-shape-wrap';
+        carWrap.appendChild(carBtn);
+        carWrap.appendChild(carLbl);
+        carWrap.addEventListener('click', () => {
             const url = new URL('./static/assets/audi_r8.glb', document.baseURI).toString();
             events.fire('mesh.importUrl', url, 'audi_r8.glb', 'Audi R8');
         });
-        addGrp.appendChild(carBtn);
 
-        row1.appendChild(addGrp);
-        row1.appendChild(sep());
+        importRow.appendChild(importWrap);
+        importRow.appendChild(carWrap);
+        addSec.appendChild(importRow);
 
-        // ── group: Object list ──
-        const objGrp = group('mesh-obj-grp');
-        objGrp.appendChild(capsLabel('Objects'));
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 2 — Objects
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const objSec = section('mp-objects');
+        objSec.appendChild(heading('Objects'));
 
-        const listScroll = document.createElement('div');
-        listScroll.id = 'mesh-obj-list';
-        objGrp.appendChild(listScroll);
+        const objList = document.createElement('div');
+        objList.id = 'mp-obj-list';
+        objSec.appendChild(objList);
 
-        row1.appendChild(objGrp);
-        row1.appendChild(sep());
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 3 — Gizmo mode
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const modeSec = section('mp-mode');
+        modeSec.appendChild(heading('Gizmo Mode'));
 
-        // ── group: Gizmo mode ──
-        const modeGrp = group();
-        modeGrp.appendChild(capsLabel('Mode'));
+        const modeRow = document.createElement('div');
+        modeRow.className = 'mp-btn-row';
 
         const gizmoModes = [
-            { mode: 'translate', icon: '✥', title: 'Move (T)'   },
-            { mode: 'rotate',    icon: '↻', title: 'Rotate (R)' },
-            { mode: 'scale',     icon: '⇲', title: 'Scale (S)'  },
+            { mode: 'translate', icon: '✥', label: 'Move'   },
+            { mode: 'rotate',    icon: '↻', label: 'Rotate' },
+            { mode: 'scale',     icon: '⇲', label: 'Scale'  },
         ];
         const modeBtns = new Map<string, HTMLElement>();
 
-        gizmoModes.forEach(({ mode, icon, title }) => {
-            const btn = iconBtn(icon, title);
-            btn.addEventListener('click', () => {
-                modeBtns.forEach((b, m) => b.classList.toggle('active', m === mode));
+        gizmoModes.forEach(({ mode, icon, label }) => {
+            const btn = iconBtn(icon, `${label} (${label[0]})`);
+            const lbl = document.createElement('span');
+            lbl.className = 'mp-btn-label';
+            lbl.textContent = label;
+            const wrap = document.createElement('div');
+            wrap.className = 'mp-shape-wrap';
+            wrap.appendChild(btn);
+            wrap.appendChild(lbl);
+            wrap.addEventListener('click', () => {
+                modeBtns.forEach((b, m) => {
+                    b.classList.toggle('active', m === mode);
+                });
                 events.fire('mesh.gizmo.mode', mode);
             });
-            modeGrp.appendChild(btn);
+            modeRow.appendChild(wrap);
             modeBtns.set(mode, btn);
         });
         modeBtns.get('translate')!.classList.add('active');
+        modeSec.appendChild(modeRow);
 
-        row1.appendChild(modeGrp);
-        this.dom.appendChild(row1);
-
-        // ── ROW 2: Transform + Material (hidden until object selected) ───────
-        const row2 = document.createElement('div');
-        row2.className = 'mesh-row';
-        row2.id = 'mesh-row2';
-        row2.style.display = 'none';
-
-        // ── group: Transform P / R / S ──
-        const tfGrp = group();
-        tfGrp.id = 'mesh-tf-grp';
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 4 — Transform (hidden until object selected)
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const tfSec = section('mp-tf');
+        tfSec.appendChild(heading('Transform'));
 
         const makeVecRow = (lbl: string, step: number, def: [number, number, number]): VectorInput => {
-            const wrap = document.createElement('div');
-            wrap.className = 'mesh-tf-row';
+            const row = document.createElement('div');
+            row.className = 'mp-vec-row';
             const l = document.createElement('span');
-            l.className = 'mesh-tf-lbl';
+            l.className = 'mp-vec-lbl';
             l.textContent = lbl;
-            wrap.appendChild(l);
+            row.appendChild(l);
             const vec = new VectorInput({ dimensions: 3, precision: 3, step, placeholder: ['X', 'Y', 'Z'], value: def, enabled: false });
-            vec.dom.classList.add('mesh-vec');
-            wrap.appendChild(vec.dom);
-            tfGrp.appendChild(wrap);
+            vec.dom.classList.add('mp-vec');
+            row.appendChild(vec.dom);
+            tfSec.appendChild(row);
             return vec;
         };
 
-        const posVec = makeVecRow('P', 0.01, [0, 0, 0]);
-        const rotVec = makeVecRow('R', 1,    [0, 0, 0]);
-        const sclVec = makeVecRow('S', 0.01, [1, 1, 1]);
+        const posVec = makeVecRow('Position', 0.01, [0, 0, 0]);
+        const rotVec = makeVecRow('Rotation', 1,    [0, 0, 0]);
+        const sclVec = makeVecRow('Scale',    0.01, [1, 1, 1]);
 
-        row2.appendChild(tfGrp);
-        row2.appendChild(sep());
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 5 — Material (hidden until object selected)
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const matSec = section('mp-mat');
+        matSec.appendChild(heading('Material'));
 
-        // ── group: Material ──
-        const matGrp = group();
-        matGrp.id = 'mesh-mat-grp';
-        matGrp.appendChild(capsLabel('Material'));
-
+        // Preset row
+        const presetRow = document.createElement('div');
+        presetRow.className = 'mp-field-row';
+        const presetLbl = document.createElement('span');
+        presetLbl.className = 'mp-field-lbl';
+        presetLbl.textContent = 'Preset';
         const presetSelect = new SelectInput({
             options: [
                 { v: 'glass',   t: 'Glass'   },
@@ -179,44 +225,53 @@ class MeshPanel extends Container {
             ],
             value: 'mirror',
         });
-        presetSelect.dom.style.width = '75px';
-        matGrp.appendChild(presetSelect.dom);
+        presetSelect.dom.classList.add('mp-select');
+        presetRow.appendChild(presetLbl);
+        presetRow.appendChild(presetSelect.dom);
+        matSec.appendChild(presetRow);
 
+        // Slider factory
         const makeSlider = (lbl: string, min: number, max: number, val: number): SliderInput => {
-            const col = document.createElement('div');
-            col.className = 'mesh-slider-col';
+            const row = document.createElement('div');
+            row.className = 'mp-field-row';
             const l = document.createElement('span');
-            l.className = 'mesh-slider-lbl';
+            l.className = 'mp-field-lbl';
             l.textContent = lbl;
-            col.appendChild(l);
+            row.appendChild(l);
             const s = new SliderInput({ min, max, step: 0.01, value: val });
-            s.dom.classList.add('mesh-slider');
-            col.appendChild(s.dom);
-            matGrp.appendChild(col);
+            s.dom.classList.add('mp-slider');
+            row.appendChild(s.dom);
+            matSec.appendChild(row);
             return s;
         };
 
-        const opacitySlider = makeSlider('Opacity', 0, 1, 1.0);
-        const reflSlider    = makeSlider('Reflect',  0, 1, 1.0);
-        const roughSlider   = makeSlider('Rough',    0, 1, 0.0);
-        const metalSlider   = makeSlider('Metal',    0, 1, 1.0);
+        const opacitySlider = makeSlider('Opacity',     0, 1, 1.0);
+        const reflSlider    = makeSlider('Reflectivity', 0, 1, 1.0);
+        const roughSlider   = makeSlider('Roughness',   0, 1, 0.0);
+        const metalSlider   = makeSlider('Metalness',   0, 1, 1.0);
 
-        const captureBtn = iconBtn('↺', 'Re-capture reflection');
+        // Re-capture button
+        const captureRow = document.createElement('div');
+        captureRow.className = 'mp-capture-row';
+        const captureBtn = document.createElement('div');
+        captureBtn.className = 'mp-capture-btn';
+        captureBtn.textContent = '↺  Re-capture Reflection';
         captureBtn.addEventListener('click', () => selectedMesh?.captureReflection());
-        matGrp.appendChild(captureBtn);
-
-        row2.appendChild(matGrp);
-        this.dom.appendChild(row2);
+        captureRow.appendChild(captureBtn);
+        matSec.appendChild(captureRow);
 
         // ── STATE ────────────────────────────────────────────────────────────
         let selectedMesh: MeshElement | null = null;
         let panelUpdating = false;
         const meshItems = new Map<MeshElement, HTMLElement>();
 
-        const showRow2 = (on: boolean) => {
-            row2.style.display = on ? 'flex' : 'none';
+        const showTfMat = (on: boolean) => {
+            tfSec.style.display = on ? '' : 'none';
+            matSec.style.display = on ? '' : 'none';
+            // also show/hide the rules before them
             posVec.enabled = rotVec.enabled = sclVec.enabled = on;
         };
+        showTfMat(false);
 
         const v3 = (v: Vec3): [number, number, number] => [v.x, v.y, v.z];
 
@@ -231,7 +286,7 @@ class MeshPanel extends Container {
         const selectMesh = (mesh: MeshElement | null) => {
             selectedMesh = mesh;
             meshItems.forEach((chip, m) => chip.classList.toggle('active', m === mesh));
-            showRow2(!!mesh);
+            showTfMat(!!mesh);
             if (mesh) {
                 updateTf(mesh);
                 const o = mesh.materialOptions;
@@ -244,42 +299,49 @@ class MeshPanel extends Container {
             events.fire('mesh.selected', mesh);
         };
 
-        // ── Object chip ──────────────────────────────────────────────────────
-        const addMeshChip = (mesh: MeshElement) => {
-            const chip = document.createElement('div');
-            chip.className = 'mesh-chip';
+        // ── Object row in the Objects section ────────────────────────────────
+        const addMeshRow = (mesh: MeshElement) => {
+            const row = document.createElement('div');
+            row.className = 'mp-obj-row';
 
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'mesh-chip-name';
-            nameSpan.textContent = mesh.name;
+            const icon = document.createElement('span');
+            icon.className = 'mp-obj-icon';
+            icon.textContent = mesh.name.toLowerCase().includes('audi') ? '🚗' :
+                               mesh.name.toLowerCase().includes('bullet') ? '🔫' :
+                               mesh.name.toLowerCase().includes('wave') ? '〰' : '◈';
+
+            const name = document.createElement('span');
+            name.className = 'mp-obj-name';
+            name.textContent = mesh.name;
 
             const visBtn = document.createElement('span');
-            visBtn.className = 'mesh-chip-btn';
+            visBtn.className = 'mp-obj-btn';
             visBtn.textContent = '👁';
             visBtn.title = 'Toggle visibility';
 
             const delBtn = document.createElement('span');
-            delBtn.className = 'mesh-chip-btn';
+            delBtn.className = 'mp-obj-btn mp-obj-del';
             delBtn.textContent = '✕';
             delBtn.title = 'Remove';
 
-            chip.appendChild(nameSpan);
-            chip.appendChild(visBtn);
-            chip.appendChild(delBtn);
-            listScroll.appendChild(chip);
-            meshItems.set(mesh, chip);
+            row.appendChild(icon);
+            row.appendChild(name);
+            row.appendChild(visBtn);
+            row.appendChild(delBtn);
+            objList.appendChild(row);
+            meshItems.set(mesh, row);
 
-            chip.addEventListener('click', () => selectMesh(mesh));
+            row.addEventListener('click', () => selectMesh(mesh));
             visBtn.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
                 mesh.visible = !mesh.visible;
-                visBtn.style.opacity = mesh.visible ? '1' : '0.3';
+                visBtn.style.opacity = mesh.visible ? '1' : '0.35';
             });
             delBtn.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
                 if (selectedMesh === mesh) selectMesh(null);
                 meshItems.delete(mesh);
-                chip.remove();
+                row.remove();
                 events.fire('mesh.removed', mesh);
                 mesh.destroy();
             });
@@ -334,19 +396,18 @@ class MeshPanel extends Container {
         roughSlider.on('change', applyMat);
         metalSlider.on('change', applyMat);
 
-        // ── Event wiring ──────────────────────────────────────────────────────
-        events.on('mesh.added', (mesh: MeshElement) => { addMeshChip(mesh); selectMesh(mesh); });
+        // ── Events ────────────────────────────────────────────────────────────
+        events.on('mesh.added', (mesh: MeshElement) => { addMeshRow(mesh); selectMesh(mesh); });
         events.on('mesh.transform.changed', (mesh: MeshElement) => { if (mesh === selectedMesh) updateTf(mesh); });
         events.on('mesh.select', (mesh: MeshElement | null) => selectMesh(mesh));
 
-        // Keyboard shortcuts (T/R/S for gizmo mode, Escape to cancel placement)
         document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement) return;
             const k = e.key.toLowerCase();
-            if      (k === 't') { modeBtns.get('translate')?.click(); }
-            else if (k === 'r') { modeBtns.get('rotate')?.click(); }
-            else if (k === 's') { modeBtns.get('scale')?.click(); }
-            else if (e.key === 'Escape') { events.fire('mesh.cancelPlace'); }
+            if      (k === 't') modeBtns.get('translate')?.click();
+            else if (k === 'r') modeBtns.get('rotate')?.click();
+            else if (k === 's') modeBtns.get('scale')?.click();
+            else if (e.key === 'Escape') events.fire('mesh.cancelPlace');
         });
     }
 }
