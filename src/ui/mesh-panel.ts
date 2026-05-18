@@ -94,7 +94,8 @@ class MeshPanel extends Container {
         carBtn.dom.style.fontSize = '16px';
         carBtn.on('click', () => {
             const url = new URL('./static/assets/audi_r8.glb', document.baseURI).toString();
-            events.fire('mesh.importUrl', url, 'Audi R8');
+            // filename MUST have .glb so PlayCanvas picks the right container importer
+            events.fire('mesh.importUrl', url, 'audi_r8.glb', 'Audi R8');
         });
         addSection.append(carBtn);
 

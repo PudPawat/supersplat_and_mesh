@@ -95,8 +95,10 @@ const initMeshHandler = (scene: Scene, events: Events) => {
     });
 
     // ── Load mesh from URL (e.g. bundled sample models) ─────────────────────
-    events.on('mesh.importUrl', async (url: string, name: string) => {
-        await loadMeshUrl(url, name, scene, registerMesh, events);
+    // filename = 'audi_r8.glb' (used by PlayCanvas importer; must have extension)
+    // displayName = 'Audi R8'  (shown in the UI object list)
+    events.on('mesh.importUrl', async (url: string, filename: string, displayName?: string) => {
+        await loadMeshUrl(url, filename, displayName ?? filename, scene, registerMesh, events);
     });
 
     // ── drag-drop ───────────────────────────────────────────────────────────
@@ -159,7 +161,8 @@ const loadMeshFile = async (
 
 const loadMeshUrl = async (
     url: string,
-    name: string,
+    filename: string,       // must include extension e.g. 'audi_r8.glb'
+    displayName: string,    // shown in UI e.g. 'Audi R8'
     scene: Scene,
     register: (m: MeshElement) => void,
     events: Events
@@ -167,16 +170,20 @@ const loadMeshUrl = async (
     events.fire('startSpinner');
     try {
         await new Promise<void>((resolve, reject) => {
-            const asset = new Asset(name, 'container', { url, filename: name });
+            // filename (with .glb extension) tells PlayCanvas which importer to use
+            const asset = new Asset(displayName, 'container', { url, filename });
             scene.app.assets.add(asset);
 
             asset.on('load', () => {
                 const source: MeshSource = { kind: 'container', asset };
-                const mesh = new MeshElement(source, name);
+                const mesh = new MeshElement(source, displayName);
                 scene.add(mesh).then(() => { register(mesh); resolve(); });
             });
 
-            asset.on('error', (err: string) => reject(new Error(err)));
+            asset.on('error', (err: string) => {
+                console.error('[loadMeshUrl] asset error:', err);
+                reject(new Error(err));
+            });
 
             scene.app.assets.load(asset);
         });
