@@ -259,8 +259,6 @@ const main = async () => {
     // load async models
     scene.start();
 
-    // default mesh: sphere — delay so scene is fully started
-    setTimeout(() => events.fire('mesh.addPrimitive', 'sphere'), 300);
 
     // handle load params
     const loadList = url.searchParams.getAll('load');

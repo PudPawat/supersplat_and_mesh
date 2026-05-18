@@ -177,7 +177,11 @@ const loadMeshUrl = async (
             asset.on('load', () => {
                 const source: MeshSource = { kind: 'container', asset };
                 const mesh = new MeshElement(source, displayName);
-                scene.add(mesh).then(() => { register(mesh); resolve(); });
+                scene.add(mesh).then(() => {
+                    mesh.setScale(new Vec3(0.1, 0.1, 0.1));
+                    register(mesh);
+                    resolve();
+                });
             });
 
             asset.on('error', (err: string) => {
