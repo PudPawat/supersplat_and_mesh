@@ -89,6 +89,15 @@ class MeshPanel extends Container {
         importBtn.on('click', () => events.fire('mesh.import'));
         addSection.append(importBtn);
 
+        const carBtn = iconBtn('🚗', 'Load Audi R8 sample car');
+        carBtn.dom.style.background = '#333';
+        carBtn.dom.style.fontSize = '16px';
+        carBtn.on('click', () => {
+            const url = new URL('./static/assets/audi_r8.glb', document.baseURI).toString();
+            events.fire('mesh.importUrl', url, 'Audi R8');
+        });
+        addSection.append(carBtn);
+
         // ══════════════════════════════════════════════════════════════════
         // SECTION 2 — Object list
         // ══════════════════════════════════════════════════════════════════

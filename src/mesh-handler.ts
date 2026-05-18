@@ -94,6 +94,11 @@ const initMeshHandler = (scene: Scene, events: Events) => {
         input.click();
     });
 
+    // ── Load mesh from URL (e.g. bundled sample models) ─────────────────────
+    events.on('mesh.importUrl', async (url: string, name: string) => {
+        await loadMeshUrl(url, name, scene, registerMesh, events);
+    });
+
     // ── drag-drop ───────────────────────────────────────────────────────────
     events.on('drop.file', async (file: File) => {
         if (isMeshFile(file.name)) {
@@ -147,6 +152,36 @@ const loadMeshFile = async (
         });
     } catch (err) {
         console.error('Failed to load mesh:', err);
+    } finally {
+        events.fire('stopSpinner');
+    }
+};
+
+const loadMeshUrl = async (
+    url: string,
+    name: string,
+    scene: Scene,
+    register: (m: MeshElement) => void,
+    events: Events
+) => {
+    events.fire('startSpinner');
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const asset = new Asset(name, 'container', { url, filename: name });
+            scene.app.assets.add(asset);
+
+            asset.on('load', () => {
+                const source: MeshSource = { kind: 'container', asset };
+                const mesh = new MeshElement(source, name);
+                scene.add(mesh).then(() => { register(mesh); resolve(); });
+            });
+
+            asset.on('error', (err: string) => reject(new Error(err)));
+
+            scene.app.assets.load(asset);
+        });
+    } catch (err) {
+        console.error('Failed to load mesh from URL:', err);
     } finally {
         events.fire('stopSpinner');
     }

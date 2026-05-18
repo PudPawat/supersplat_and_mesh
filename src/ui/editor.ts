@@ -124,7 +124,12 @@ class EditorUI {
         const scenePanel = new ScenePanel(events, tooltips);
         const viewPanel = new ViewPanel(events, tooltips);
         const colorPanel = new ColorPanel(events, tooltips);
-        const meshPanel = new MeshPanel(events, tooltips);
+        let meshPanel: MeshPanel | null = null;
+        try {
+            meshPanel = new MeshPanel(events, tooltips);
+        } catch (e) {
+            console.error('[MeshPanel] constructor threw — mesh bar disabled:', e);
+        }
         const bottomToolbar = new BottomToolbar(events, tooltips);
         const rightToolbar = new RightToolbar(events, tooltips);
         const modeToggle = new ModeToggle(events, tooltips);
@@ -137,7 +142,7 @@ class EditorUI {
         canvasContainer.append(scenePanel);
         canvasContainer.append(viewPanel);
         canvasContainer.append(colorPanel);
-        canvasContainer.append(meshPanel);
+        if (meshPanel) canvasContainer.append(meshPanel);
         canvasContainer.append(bottomToolbar);
         canvasContainer.append(rightToolbar);
         canvasContainer.append(modeToggle);

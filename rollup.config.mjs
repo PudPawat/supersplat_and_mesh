@@ -60,7 +60,8 @@ const application = {
                 { src: 'static/icons', dest: 'static' },
                 { src: 'static/lib', dest: 'static' },
                 { src: 'static/locales', dest: 'static' },
-                { src: 'static/env/VertebraeHDRI_v1_512.png', dest: 'static/env' }
+                { src: 'static/env/VertebraeHDRI_v1_512.png', dest: 'static/env' },
+                { src: 'static/assets', dest: 'static' }
             ]
         }),
         alias({
