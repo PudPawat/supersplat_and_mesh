@@ -74,11 +74,14 @@ const initMeshHandler = (scene: Scene, events: Events) => {
     });
 
     // ── re-capture reflections when 3DGS scene loads ────────────────────────
+    // Run probes sequentially so they don't conflict with each other.
     events.on('stopSpinner', () => {
         const hasSplats = scene.getElementsByType(ElementType.splat).length > 0;
         if (!hasSplats) return;
-        setTimeout(() => {
-            meshList.forEach(m => m.captureReflection());
+        setTimeout(async () => {
+            for (const m of meshList) {
+                await m.captureReflection();
+            }
         }, 1000);
     });
 

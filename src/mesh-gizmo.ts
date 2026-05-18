@@ -62,12 +62,6 @@ class MeshGizmo {
 
             g.on('transform:end', () => {
                 scene.camera.gizmoActive = false;
-
-                // Re-capture reflection probe at the new world position.
-                const ssrActive = !!(scene as any).ssrPass?.ssrSceneTexture;
-                if (!ssrActive && this.mesh) {
-                    this.mesh.captureReflection();
-                }
             });
 
             g.on('transform:move', () => {
