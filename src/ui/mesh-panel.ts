@@ -215,13 +215,14 @@ class MeshPanel extends Container {
         presetLbl.textContent = 'Preset';
         const presetSelect = new SelectInput({
             options: [
-                { v: 'glass',   t: 'Glass'   },
-                { v: 'mirror',  t: 'Mirror'  },
-                { v: 'metal',   t: 'Metal'   },
-                { v: 'plastic', t: 'Plastic' },
-                { v: 'gold',    t: 'Gold'    },
-                { v: 'wave',    t: 'Wave'    },
-                { v: 'custom',  t: 'Custom'  },
+                { v: 'original', t: 'Original (GLB)' },
+                { v: 'glass',    t: 'Glass'   },
+                { v: 'mirror',   t: 'Mirror'  },
+                { v: 'metal',    t: 'Metal'   },
+                { v: 'plastic',  t: 'Plastic' },
+                { v: 'gold',     t: 'Gold'    },
+                { v: 'wave',     t: 'Wave'    },
+                { v: 'custom',   t: 'Custom'  },
             ],
             value: 'mirror',
         });

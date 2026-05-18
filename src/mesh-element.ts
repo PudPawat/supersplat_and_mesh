@@ -16,7 +16,8 @@ import { captureReflectionProbe } from './mesh-probe';
 import { ssrChunk } from './shaders/ssr-shader';
 import { Scene } from './scene';
 
-export type MeshMaterialPreset = 'glass' | 'mirror' | 'metal' | 'plastic' | 'custom' | 'gold' | 'wave';
+// 'original' = keep the GLB's own materials untouched
+export type MeshMaterialPreset = 'original' | 'glass' | 'mirror' | 'metal' | 'plastic' | 'custom' | 'gold' | 'wave';
 
 export interface MeshMaterialOptions {
     preset: MeshMaterialPreset;
@@ -30,13 +31,14 @@ export interface MeshMaterialOptions {
 }
 
 const PRESETS: Record<MeshMaterialPreset, Partial<MeshMaterialOptions>> = {
-    glass:   { opacity: 0.75, tintR: 0.88, tintG: 0.96, tintB: 1.00, reflectivity: 1.0,  metalness: 0.3,  roughness: 0.0  },
-    mirror:  { opacity: 1.0,  tintR: 0.95, tintG: 0.95, tintB: 0.95, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.0  },
-    metal:   { opacity: 1.0,  tintR: 0.9,  tintG: 0.85, tintB: 0.75, reflectivity: 0.7,  metalness: 1.0,  roughness: 0.2  },
-    plastic: { opacity: 1.0,  tintR: 1.0,  tintG: 0.3,  tintB: 0.3,  reflectivity: 0.2,  metalness: 0.0,  roughness: 0.4  },
-    custom:  { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.5,  metalness: 0.0,  roughness: 0.2  },
-    gold:    { opacity: 1.0,  tintR: 1.0,  tintG: 0.78, tintB: 0.18, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.05 },
-    wave:    { opacity: 0.22, tintR: 0.82, tintG: 0.96, tintB: 1.0,  reflectivity: 0.9,  metalness: 0.15, roughness: 0.0  },
+    original: { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.0,  metalness: 0.0,  roughness: 1.0  },
+    glass:    { opacity: 0.75, tintR: 0.88, tintG: 0.96, tintB: 1.00, reflectivity: 1.0,  metalness: 0.3,  roughness: 0.0  },
+    mirror:   { opacity: 1.0,  tintR: 0.95, tintG: 0.95, tintB: 0.95, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.0  },
+    metal:    { opacity: 1.0,  tintR: 0.9,  tintG: 0.85, tintB: 0.75, reflectivity: 0.7,  metalness: 1.0,  roughness: 0.2  },
+    plastic:  { opacity: 1.0,  tintR: 1.0,  tintG: 0.3,  tintB: 0.3,  reflectivity: 0.2,  metalness: 0.0,  roughness: 0.4  },
+    custom:   { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.5,  metalness: 0.0,  roughness: 0.2  },
+    gold:     { opacity: 1.0,  tintR: 1.0,  tintG: 0.78, tintB: 0.18, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.05 },
+    wave:     { opacity: 0.22, tintR: 0.82, tintG: 0.96, tintB: 1.0,  reflectivity: 0.9,  metalness: 0.15, roughness: 0.0  },
 };
 
 const defaultOptions = (): MeshMaterialOptions => ({
@@ -53,6 +55,8 @@ class MeshElement extends Element {
     _name: string;
     _visible = true;
     materialOptions: MeshMaterialOptions;
+    /** True while the GLB's own materials should be shown (preset === 'original') */
+    private _useOriginalMaterials = false;
     private _material: StandardMaterial | null = null;
     private _envAtlas: Texture | null = null;
 
@@ -100,14 +104,18 @@ class MeshElement extends Element {
                 this._applyToRender(this.pivot);
             }
         } else {
-            // GLB / GLTF container
+            // GLB / GLTF container — preserve ALL original materials, textures, PBR props.
+            // Only reassign the render layer so the car draws on top of splats.
+            this._useOriginalMaterials = true;
+            this.materialOptions.preset = 'original';
+
             scene.contentRoot.addChild(this.pivot);
             const resource = (this.source.asset.resource as any);
             if (resource?.instantiateRenderEntity) {
                 const child: Entity = resource.instantiateRenderEntity({ castShadows: false });
                 this.pivot.addChild(child);
-                this._buildMaterial();
-                this._walkAndApply(this.pivot);
+                // Set layer only — do NOT touch materials
+                this._walkSetLayer(this.pivot, scene);
             }
         }
     }
@@ -149,8 +157,13 @@ class MeshElement extends Element {
         if (atlas) {
             if (this._envAtlas) this._envAtlas.destroy();
             this._envAtlas = atlas;
-            this._buildMaterial();
-            this._walkAndApply(this.pivot);
+            // Only rebuild + apply our material if we're NOT using original GLB materials.
+            // If the user is still on 'original', the env atlas is cached and will be used
+            // if they later switch to a reflective preset.
+            if (!this._useOriginalMaterials) {
+                this._buildMaterial();
+                this._walkAndApply(this.pivot);
+            }
             console.log('[MeshElement] reflection applied for', this._name);
         } else {
             console.warn('[MeshElement] all capture methods failed for', this._name);
@@ -162,7 +175,17 @@ class MeshElement extends Element {
             Object.assign(this.materialOptions, PRESETS[opts.preset]);
         }
         Object.assign(this.materialOptions, opts);
-        if (this.pivot) {
+
+        // Switching away from 'original' → user explicitly wants a custom material
+        if (opts.preset && opts.preset !== 'original') {
+            this._useOriginalMaterials = false;
+        }
+        // Switching back to 'original' → restore GLB materials
+        if (opts.preset === 'original') {
+            this._useOriginalMaterials = true;
+        }
+
+        if (this.pivot && !this._useOriginalMaterials) {
             this._buildMaterial();
             this._walkAndApply(this.pivot);
         }
@@ -254,24 +277,27 @@ class MeshElement extends Element {
         });
     }
 
-    private _applyToRender(entity: Entity) {
+    /** Reassign layer only — does NOT touch materials. Used for GLB containers. */
+    private _walkSetLayer(entity: Entity, scene: Scene) {
         const r = (entity as any).render;
-        if (!r) return;
-
-        // Move every render component into meshLayer so it draws AFTER the
-        // splat layer (splatLayer → meshLayer ordering is set up in scene.ts).
-        const scene = this.scene as Scene;
-        if (scene?.meshLayer) {
+        if (r && scene?.meshLayer) {
             r.layers = [scene.meshLayer.id];
         }
-
-        if (r.meshInstances) {
-            for (const mi of r.meshInstances) {
-                mi.material = this._material as unknown as Material;
-            }
+        for (let i = 0; i < entity.children.length; i++) {
+            this._walkSetLayer(entity.children[i] as Entity, scene);
         }
     }
 
+    /** Apply our custom material to a single render component. */
+    private _applyToRender(entity: Entity) {
+        const r = (entity as any).render;
+        if (!r?.meshInstances) return;
+        for (const mi of r.meshInstances) {
+            mi.material = this._material as unknown as Material;
+        }
+    }
+
+    /** Walk hierarchy and apply our custom material everywhere. */
     private _walkAndApply(entity: Entity) {
         this._applyToRender(entity);
         for (let i = 0; i < entity.children.length; i++) {
