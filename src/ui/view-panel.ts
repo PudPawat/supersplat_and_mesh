@@ -157,6 +157,28 @@ class ViewPanel extends Container {
         fovRow.append(fovLabel);
         fovRow.append(fovSlider);
 
+        // far clip multiplier
+
+        const clipRow = new Container({
+            class: 'view-panel-row'
+        });
+
+        const clipLabel = new Label({
+            text: 'Far Clip',
+            class: 'view-panel-row-label'
+        });
+
+        const clipSlider = new SliderInput({
+            class: 'view-panel-row-slider',
+            min: 1,
+            max: 100,
+            precision: 0,
+            value: 5
+        });
+
+        clipRow.append(clipLabel);
+        clipRow.append(clipSlider);
+
         // sh bands
         const shBandsRow = new Container({
             class: 'view-panel-row'
@@ -325,6 +347,7 @@ class ViewPanel extends Container {
         this.append(clrRow);
         this.append(tonemappingRow);
         this.append(fovRow);
+        this.append(clipRow);
         this.append(shBandsRow);
         this.append(cameraFlySpeedRow);
         this.append(centersSizeRow);
@@ -468,6 +491,16 @@ class ViewPanel extends Container {
 
         fovSlider.on('change', (value: number) => {
             events.fire('camera.setFov', value);
+        });
+
+        // far clip multiplier
+
+        events.on('camera.clipFarMult', (value: number) => {
+            clipSlider.value = value;
+        });
+
+        clipSlider.on('change', (value: number) => {
+            events.fire('camera.setClipFarMult', value);
         });
 
         // tonemapping

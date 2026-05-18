@@ -88,6 +88,10 @@ class Camera extends Element {
 
     flySpeed = 1;
 
+    /** Multiplier on bounding-radius used to compute the far clip plane.
+     *  Higher = more geometry visible; lower = better depth precision. */
+    clipFarMult = 5;
+
     controlMode: 'orbit' | 'fly' = 'orbit';
 
     // during fly-mode look, stores the camera position that must stay fixed
@@ -639,17 +643,17 @@ class Camera extends Element {
         vec.sub2(bound.center, cameraPosition);
         const dist = vec.dot(forwardVec);
 
-        // Use a 5× radius margin so that geometry outside the splat bounding
-        // sphere (mesh objects, reflections looking sideways / up / down) is
-        // never clipped.  The near/far ratio stays at 1:16384 for good depth
-        // precision.
+        // clipFarMult controls how many bounding-radii beyond the scene the far
+        // clip extends.  Exposed in the View panel so the user can tune it.
+        // The near/far ratio stays at 1:16384 for good depth precision.
+        const mult = Math.max(1, this.clipFarMult);
         if (dist > 0) {
-            this.far = dist + boundRadius * 5;
+            this.far = dist + boundRadius * mult;
             // if camera is placed inside the sphere bound calculate near based far
             this.near = Math.max(1e-6, dist < boundRadius ? this.far / (1024 * 16) : dist - boundRadius);
         } else {
             // if the scene is behind the camera
-            this.far = boundRadius * 10;
+            this.far = boundRadius * mult * 2;
             this.near = this.far / (1024 * 16);
         }
     }

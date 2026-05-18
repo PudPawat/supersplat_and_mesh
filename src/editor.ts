@@ -123,6 +123,16 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
         setCameraFov(fov);
     });
 
+    // camera.clipFarMult
+
+    events.function('camera.clipFarMult', () => {
+        return scene.camera.clipFarMult;
+    });
+
+    events.on('camera.setClipFarMult', (value: number) => {
+        scene.camera.clipFarMult = value;
+    });
+
     // camera.tonemapping
 
     events.function('camera.tonemapping', () => {
