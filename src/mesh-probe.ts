@@ -70,6 +70,11 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
             scene.app.once('prerender', () => {
                 entity.setLocalPosition(worldPos.x, worldPos.y, worldPos.z);
                 entity.setLocalEulerAngles(pitch, yaw, roll);
+                // Refit clipping planes for THIS face direction — the camera's
+                // normal update already ran with the user's view direction, so
+                // without this the probe faces looking away from the scene get
+                // wrong (too-tight) clip planes and capture a black frame.
+                scene.camera.fitClippingPlanes(entity.getLocalPosition(), entity.forward);
                 resolve();
             });
         });

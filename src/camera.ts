@@ -631,13 +631,17 @@ class Camera extends Element {
         vec.sub2(bound.center, cameraPosition);
         const dist = vec.dot(forwardVec);
 
+        // Use a 5× radius margin so that geometry outside the splat bounding
+        // sphere (mesh objects, reflections looking sideways / up / down) is
+        // never clipped.  The near/far ratio stays at 1:16384 for good depth
+        // precision.
         if (dist > 0) {
-            this.far = dist + boundRadius;
+            this.far = dist + boundRadius * 5;
             // if camera is placed inside the sphere bound calculate near based far
             this.near = Math.max(1e-6, dist < boundRadius ? this.far / (1024 * 16) : dist - boundRadius);
         } else {
             // if the scene is behind the camera
-            this.far = boundRadius * 2;
+            this.far = boundRadius * 10;
             this.near = this.far / (1024 * 16);
         }
     }
