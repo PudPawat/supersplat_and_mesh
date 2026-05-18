@@ -8,7 +8,7 @@
  * No ghost mesh — keeps it simple and reliable.
  */
 
-import { Mat4, Vec3, Vec4 } from 'playcanvas';
+import { BoundingBox, Entity, Mat4, Vec3, Vec4 } from 'playcanvas';
 
 import { Events } from './events';
 import { MeshElement } from './mesh-element';
@@ -52,6 +52,41 @@ const worldFromPointer = (e: PointerEvent, scene: Scene): Vec3 => {
     // Fallback: place 2m in front of the camera along the ray
     const d = 2;
     return new Vec3(near.x + dir.x * d, near.y + dir.y * d, near.z + dir.z * d);
+};
+
+/**
+ * Walk an entity's render hierarchy and return the combined world-space
+ * bounding sphere.  Falls back to null if the entity has no render components
+ * (e.g. pivot-only entities before geometry is loaded).
+ */
+const worldBoundSphere = (root: Entity): { center: Vec3; radius: number } | null => {
+    const box = new BoundingBox();
+    let found = false;
+
+    const walk = (e: Entity) => {
+        const r = (e as any).render;
+        if (r?.meshInstances) {
+            for (const mi of r.meshInstances) {
+                if (!mi.aabb) continue;
+                if (!found) {
+                    box.copy(mi.aabb);
+                    found = true;
+                } else {
+                    box.add(mi.aabb);
+                }
+            }
+        }
+        for (let i = 0; i < e.children.length; i++) {
+            walk(e.children[i] as Entity);
+        }
+    };
+    walk(root);
+
+    if (!found) return null;
+    return {
+        center: box.center.clone(),
+        radius: box.halfExtents.length()
+    };
 };
 
 const initMeshPlacement = (scene: Scene, events: Events) => {
@@ -130,9 +165,13 @@ const initMeshPlacement = (scene: Scene, events: Events) => {
             const pivot = mesh.pivot;
             if (!pivot || !mesh.visible) return;
 
-            const center = pivot.getPosition();
-            const scl    = pivot.getLocalScale();
-            const radius = Math.max(scl.x, scl.y, scl.z) * 0.75;
+            // Use actual world-space render bounds so GLB containers (like the
+            // car at scale 0.1 with large internal geometry) can be clicked.
+            // Fall back to the scale-based estimate for pivot-only entities.
+            const bound = worldBoundSphere(pivot);
+            const scl   = pivot.getLocalScale();
+            const center = bound?.center ?? pivot.getPosition();
+            const radius = bound?.radius ?? Math.max(scl.x, scl.y, scl.z) * 0.75;
 
             const oc  = new Vec3().sub2(near, center);
             const a   = dir.dot(dir);

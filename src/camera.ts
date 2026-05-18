@@ -69,6 +69,14 @@ class Camera extends Element {
     }
 
     controller: PointerController;
+
+    /**
+     * Set to true while a mesh-gizmo transform drag is active so the pointer
+     * controller skips setPointerCapture and camera movement for that gesture.
+     * Cleared again in transform:end.
+     */
+    gizmoActive = false;
+
     focalPointTween = new TweenValue({ x: 0, y: 0.5, z: 0 });
     azimElevTween = new TweenValue({ azim: 30, elev: -15 });
     distanceTween = new TweenValue({ distance: 1 });

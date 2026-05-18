@@ -64,6 +64,13 @@ class PointerController {
                 if (pressedButton !== -1) {
                     return;
                 }
+                // Let the gizmo have exclusive control of the pointer when
+                // a transform drag is starting (flag is set synchronously in
+                // transform:start which fires during the canvas at-target phase,
+                // before this bubble-phase handler runs).
+                if (camera.gizmoActive) {
+                    return;
+                }
                 target.setPointerCapture(event.pointerId);
                 pressedButton = event.button;
                 x = event.offsetX;
@@ -114,6 +121,10 @@ class PointerController {
             if (event.pointerType === 'mouse') {
                 // Only process if we're tracking a button
                 if (pressedButton === -1) {
+                    return;
+                }
+                // Gizmo owns this drag — don't orbit/pan
+                if (camera.gizmoActive) {
                     return;
                 }
 

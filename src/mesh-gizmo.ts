@@ -4,7 +4,7 @@
  * drags a handle so the transform panel can stay in sync.
  */
 
-import { Entity, Mat4, RotateGizmo, ScaleGizmo, TranslateGizmo, Vec3 } from 'playcanvas';
+import { RotateGizmo, ScaleGizmo, TranslateGizmo } from 'playcanvas';
 
 import { Events } from './events';
 import { MeshElement } from './mesh-element';
@@ -37,51 +37,33 @@ class MeshGizmo {
         resize();
         events.on('camera.resize', resize);
 
-        // The camera controller attaches to 'canvas-container' and calls
-        // setPointerCapture on pointerdown, which steals all subsequent pointermove
-        // events away from PlayCanvas's gizmo.  Fix: record the active pointerId in
-        // a capture-phase listener that fires BEFORE the camera's bubble-phase
-        // handler, then release capture as soon as a gizmo drag starts so the
-        // gizmo receives the pointermove stream normally.
-        // We also stop pointermove propagation from the canvas up to canvas-container
-        // so the camera doesn't orbit while we're dragging.
-
-        const canvas = scene.canvas;
-        const canvasContainer = document.getElementById('canvas-container') as HTMLElement;
-
-        let activePointerId = -1;
-
-        // Capture phase on the container fires before the camera's bubble handler.
-        canvasContainer.addEventListener('pointerdown', (e: PointerEvent) => {
-            activePointerId = e.pointerId;
-        }, true);
-
-        // Prevent pointermove from bubbling to canvas-container (camera orbit).
-        // stopPropagation at the canvas level still lets PlayCanvas's own gizmo
-        // handlers on the canvas run (they are at-target, not caught by this).
-        const blockMove = (e: PointerEvent) => { e.stopPropagation(); };
+        // Camera-gizmo pointer conflict fix
+        // ─────────────────────────────────────────────────────────────────────
+        // The camera controller (PointerController on canvas-container) calls
+        // target.setPointerCapture() in its pointerdown handler, which runs in
+        // the *bubble* phase on canvas-container.
+        //
+        // PlayCanvas fires transform:start from inside its own pointerdown
+        // handler, which runs in the *at-target* phase on the canvas element —
+        // BEFORE the bubble phase reaches canvas-container.
+        //
+        // So by the time transform:start fires, the camera hasn't captured yet.
+        // We set scene.camera.gizmoActive = true here; the camera controller
+        // checks that flag before calling setPointerCapture and before orbiting,
+        // so it yields the entire gesture to the gizmo.
+        // Cleared in transform:end so normal camera control resumes.
 
         [this.translate, this.rotate, this.scale].forEach(g => {
             g.on('render:update', () => { scene.forceRender = true; });
 
             g.on('transform:start', () => {
-                // Release the camera's pointer capture so the canvas
-                // (and PlayCanvas's gizmo) receives pointermove / pointerup.
-                if (activePointerId !== -1) {
-                    try { canvasContainer.releasePointerCapture(activePointerId); } catch (_) { /* ignore */ }
-                }
-                // Block pointermove from reaching camera-container while dragging.
-                canvas.addEventListener('pointermove', blockMove, true);
+                scene.camera.gizmoActive = true;
             });
 
             g.on('transform:end', () => {
-                // Remove the blocker — pointerup bubbles normally so the camera
-                // controller can reset its pressedButton state.
-                canvas.removeEventListener('pointermove', blockMove, true);
+                scene.camera.gizmoActive = false;
 
                 // Re-capture reflection probe at the new world position.
-                // The SSR path is always live (per-frame screen-space), so skip
-                // the expensive async probe when SSR is active.
                 const ssrActive = !!(scene as any).ssrPass?.ssrSceneTexture;
                 if (!ssrActive && this.mesh) {
                     this.mesh.captureReflection();
