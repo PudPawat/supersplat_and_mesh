@@ -24,14 +24,15 @@ import {
 
 import { Scene } from './scene';
 
-// 6 directions: front/back/left/right + two diagonals for vertical coverage
+// 6 orthogonal cube-map faces: front/back/right/left/up/down
+// Using the full set avoids black patches in reflections that look up or down.
 const CAPTURE_EULERS: Array<[number, number, number]> = [
-    [  0,   0, 0],
-    [  0,  90, 0],
-    [  0, 180, 0],
-    [  0, 270, 0],
-    [-50,  45, 0],
-    [ 50, 225, 0],
+    [   0,   0, 0],   // front  (-Z)
+    [   0, 180, 0],   // back   (+Z)
+    [   0,  90, 0],   // right  (+X)
+    [   0, 270, 0],   // left   (-X)
+    [ -90,   0, 0],   // up     (+Y)
+    [  90,   0, 0],   // down   (-Y)
 ];
 
 /**

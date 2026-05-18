@@ -34,8 +34,8 @@ const initMeshHandler = (scene: Scene, events: Events) => {
     const registerMesh = (mesh: MeshElement) => {
         meshList.push(mesh);
         events.fire('mesh.added', mesh);
-        // auto-capture after scene has rendered (1s gives splats time to appear)
-        setTimeout(() => mesh.captureReflection(), 1000);
+        // auto-capture after scene has had a couple of frames to render
+        setTimeout(() => mesh.captureReflection(), 200);
     };
 
     // ── add primitive shape ─────────────────────────────────────────────────

@@ -37,25 +37,47 @@ class MeshGizmo {
         resize();
         events.on('camera.resize', resize);
 
-        // Block camera controller while dragging a gizmo handle
-        // PlayCanvas fires 'transform:start' / 'transform:end' on TransformGizmo
+        // The camera controller attaches to 'canvas-container' and calls
+        // setPointerCapture on pointerdown, which steals all subsequent pointermove
+        // events away from PlayCanvas's gizmo.  Fix: record the active pointerId in
+        // a capture-phase listener that fires BEFORE the camera's bubble-phase
+        // handler, then release capture as soon as a gizmo drag starts so the
+        // gizmo receives the pointermove stream normally.
+        // We also stop pointermove propagation from the canvas up to canvas-container
+        // so the camera doesn't orbit while we're dragging.
+
         const canvas = scene.canvas;
-        const blockCamera = (e: PointerEvent) => { e.stopPropagation(); };
+        const canvasContainer = document.getElementById('canvas-container') as HTMLElement;
+
+        let activePointerId = -1;
+
+        // Capture phase on the container fires before the camera's bubble handler.
+        canvasContainer.addEventListener('pointerdown', (e: PointerEvent) => {
+            activePointerId = e.pointerId;
+        }, true);
+
+        // Prevent pointermove from bubbling to canvas-container (camera orbit).
+        // stopPropagation at the canvas level still lets PlayCanvas's own gizmo
+        // handlers on the canvas run (they are at-target, not caught by this).
+        const blockMove = (e: PointerEvent) => { e.stopPropagation(); };
 
         [this.translate, this.rotate, this.scale].forEach(g => {
             g.on('render:update', () => { scene.forceRender = true; });
 
             g.on('transform:start', () => {
-                // Capture pointer so the camera controller never sees these events
-                canvas.addEventListener('pointerdown', blockCamera, true);
-                canvas.addEventListener('pointermove', blockCamera, true);
-                canvas.addEventListener('pointerup',   blockCamera, true);
+                // Release the camera's pointer capture so the canvas
+                // (and PlayCanvas's gizmo) receives pointermove / pointerup.
+                if (activePointerId !== -1) {
+                    try { canvasContainer.releasePointerCapture(activePointerId); } catch (_) { /* ignore */ }
+                }
+                // Block pointermove from reaching camera-container while dragging.
+                canvas.addEventListener('pointermove', blockMove, true);
             });
 
             g.on('transform:end', () => {
-                canvas.removeEventListener('pointerdown', blockCamera, true);
-                canvas.removeEventListener('pointermove', blockCamera, true);
-                canvas.removeEventListener('pointerup',   blockCamera, true);
+                // Remove the blocker — pointerup bubbles normally so the camera
+                // controller can reset its pressedButton state.
+                canvas.removeEventListener('pointermove', blockMove, true);
             });
 
             g.on('transform:move', () => {
