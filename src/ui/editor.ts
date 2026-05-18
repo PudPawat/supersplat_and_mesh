@@ -120,16 +120,10 @@ class EditorUI {
         const tooltips = new Tooltips();
         tooltipsContainer.append(tooltips);
 
-        // bottom toolbar
+        // floating overlays on the canvas (scene/view/color panels, toolbars)
         const scenePanel = new ScenePanel(events, tooltips);
         const viewPanel = new ViewPanel(events, tooltips);
         const colorPanel = new ColorPanel(events, tooltips);
-        let meshPanel: MeshPanel | null = null;
-        try {
-            meshPanel = new MeshPanel(events, tooltips);
-        } catch (e) {
-            console.error('[MeshPanel] constructor threw — mesh bar disabled:', e);
-        }
         const bottomToolbar = new BottomToolbar(events, tooltips);
         const rightToolbar = new RightToolbar(events, tooltips);
         const modeToggle = new ModeToggle(events, tooltips);
@@ -142,7 +136,6 @@ class EditorUI {
         canvasContainer.append(scenePanel);
         canvasContainer.append(viewPanel);
         canvasContainer.append(colorPanel);
-        if (meshPanel) canvasContainer.append(meshPanel);
         canvasContainer.append(bottomToolbar);
         canvasContainer.append(rightToolbar);
         canvasContainer.append(modeToggle);
@@ -155,13 +148,21 @@ class EditorUI {
             viewCube.update(cameraMatrix);
         });
 
-        // main container
+        // main container (flex column: canvas | panels | status bar)
         const mainContainer = new Container({
             id: 'main-container'
         });
 
         const timelinePanel = new TimelinePanel(events, tooltips);
         const dataPanel = new DataPanel(events, tooltips);
+        // Mesh panel lives in the main column, toggled by the MESH status bar tab
+        let meshPanel: MeshPanel | null = null;
+        try {
+            meshPanel = new MeshPanel(events, tooltips);
+            meshPanel.hidden = true;
+        } catch (e) {
+            console.error('[MeshPanel] constructor threw — mesh tab disabled:', e);
+        }
         const statusBar = new StatusBar(events, tooltips);
 
         timelinePanel.hidden = true;
@@ -169,12 +170,14 @@ class EditorUI {
         mainContainer.append(canvasContainer);
         mainContainer.append(timelinePanel);
         mainContainer.append(dataPanel);
+        if (meshPanel) mainContainer.append(meshPanel);
         mainContainer.append(statusBar);
 
         // Wire up status bar panel toggles
         events.on('statusBar.panelChanged', (panel: string | null) => {
             timelinePanel.hidden = panel !== 'timeline';
             dataPanel.hidden = panel !== 'splatData';
+            if (meshPanel) meshPanel.hidden = panel !== 'mesh';
         });
 
         editorContainer.append(mainContainer);

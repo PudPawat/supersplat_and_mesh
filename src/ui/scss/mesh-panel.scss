@@ -1,78 +1,98 @@
 @use 'colors.scss' as *;
 
-// ── Full-width bottom mesh bar ─────────────────────────────────────────────
-// Layout is applied via inline styles in mesh-panel.ts (to beat PCUI defaults)
-// This file only handles children / colors that inline styles can't reach.
+// (No #bottom-toolbar offset needed — mesh panel is in the normal document flow)
 
-// Push the existing floating toolbar above our bar
-#bottom-toolbar {
-    bottom: 72px !important;
+// ── Panel container ─────────────────────────────────────────────────────────
+
+#mesh-panel {
+    width: 100%;
+    flex-shrink: 0;
+    flex-direction: column;
+    background-color: $bcg-dark;
+    border-top: 1px solid $bcg-primary;
+    padding: 5px 10px;
+    gap: 4px;
+
+    &:not(.pcui-hidden) {
+        display: flex;
+    }
 }
 
-// ── Section ────────────────────────────────────────────────────────────────
+// ── Row ──────────────────────────────────────────────────────────────────────
 
-.mesh-bar-section {
+.mesh-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    min-height: 34px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+// ── Group (section within a row) ─────────────────────────────────────────────
+
+.mesh-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px 0 0;
+    flex-shrink: 0;
+}
+
+#mesh-obj-grp {
+    flex: 0 1 220px;
+    overflow: hidden;
+    min-width: 60px;
+}
+
+#mesh-tf-grp {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+#mesh-mat-grp {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 4px;
-    padding: 0 8px;
-    flex-shrink: 0;
-
-    &.hidden {
-        display: none;
-    }
-}
-
-// Object list section scrolls if many objects
-#mesh-bar-list-section {
-    flex: 0 1 220px;
-    overflow: hidden;
-}
-
-#mesh-bar-list {
-    display: flex;
-    flex-direction: row;
-    gap: 4px;
-    overflow-x: auto;
-    max-width: 180px;
-    scrollbar-width: none;
-    &::-webkit-scrollbar { display: none; }
-}
-
-// Transform section takes remaining space
-#mesh-bar-tf {
     flex: 1 1 auto;
-    gap: 8px;
+    flex-wrap: nowrap;
 }
 
-// ── Separator ──────────────────────────────────────────────────────────────
+// ── Separator ────────────────────────────────────────────────────────────────
 
-.mesh-bar-sep {
+.mesh-sep {
     width: 1px;
-    height: 36px;
+    height: 28px;
     background: $bcg-primary;
     flex-shrink: 0;
+    margin: 0 6px;
 }
 
-// ── Label ──────────────────────────────────────────────────────────────────
+// ── Caps label ───────────────────────────────────────────────────────────────
 
-.mesh-bar-label {
+.mesh-caps {
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     color: $clr-disabled;
     flex-shrink: 0;
+    margin-right: 2px;
 }
 
-// ── Icon Buttons ───────────────────────────────────────────────────────────
+// ── Icon button ───────────────────────────────────────────────────────────────
 
-.mesh-bar-btn {
-    width: 30px;
-    height: 30px;
+.mesh-btn {
+    width: 28px;
+    height: 28px;
     border-radius: 4px;
-    background: $bcg-dark;
+    background: $bcg-primary;
     cursor: pointer;
     font-size: 13px;
     color: $clr-default;
@@ -81,6 +101,7 @@
     justify-content: center;
     flex-shrink: 0;
     user-select: none;
+    transition: background 0.1s;
 
     &:hover {
         background: $bcg-light;
@@ -93,30 +114,74 @@
     }
 }
 
-.mesh-bar-btn-import {
-    font-size: 18px;
-    font-weight: bold;
+.mesh-btn-accent {
     background: $bcg-primary;
     color: $clr-hilight;
-    &:hover { background: $bcg-light; }
+    font-weight: bold;
 }
 
-.mesh-bar-mode-btn {
-    font-size: 16px;
-    width: 32px;
-    height: 32px;
+// ── Object chip list ─────────────────────────────────────────────────────────
+
+#mesh-obj-list {
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+    overflow-x: auto;
+    flex: 1 1 auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
 }
 
-// ── Transform rows ─────────────────────────────────────────────────────────
-
-.mesh-bar-tf-row {
+.mesh-chip {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
+    background: $bcg-primary;
+    border-radius: 4px;
+    padding: 2px 5px;
+    cursor: pointer;
+    flex-shrink: 0;
+    user-select: none;
+
+    &:hover { background: $bcg-light; }
+
+    &.active {
+        background: $clr-hilight;
+        .mesh-chip-name { color: #000; }
+        .mesh-chip-btn { color: #000; }
+    }
 }
 
-.mesh-bar-tf-label {
+.mesh-chip-name {
+    font-size: 10px;
+    color: $clr-default;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mesh-chip-btn {
+    font-size: 10px;
+    color: $clr-disabled;
+    cursor: pointer;
+    padding: 1px 2px;
+    border-radius: 2px;
+    line-height: 1;
+    &:hover { color: $clr-active; background: rgba(255,255,255,0.1); }
+}
+
+// ── Transform rows ────────────────────────────────────────────────────────────
+
+.mesh-tf-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+}
+
+.mesh-tf-lbl {
     font-size: 10px;
     font-weight: 700;
     color: $clr-disabled;
@@ -124,83 +189,30 @@
     flex-shrink: 0;
 }
 
-// Make VectorInput compact inside the bar
-.mesh-bar-vec {
+// Make VectorInput compact
+.mesh-vec {
     .pcui-vector-input-element {
         width: 52px !important;
     }
 }
 
-// ── Material section ───────────────────────────────────────────────────────
+// ── Material sliders ──────────────────────────────────────────────────────────
 
-#mesh-bar-mat {
-    flex-shrink: 0;
-    gap: 6px;
-    flex-wrap: nowrap;
-}
-
-.mesh-bar-select {
-    width: 80px;
-}
-
-.mesh-bar-slider-row {
+.mesh-slider-col {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1px;
-    width: 70px;
+    flex-shrink: 0;
 }
 
-.mesh-bar-slider-label {
+.mesh-slider-lbl {
     font-size: 9px;
     color: $clr-disabled;
     text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
-.mesh-bar-slider {
-    width: 70px !important;
-}
-
-// ── Mesh object chips in the list ──────────────────────────────────────────
-
-.mesh-bar-item {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 2px;
-    background: $bcg-dark;
-    border-radius: 4px;
-    padding: 2px 5px;
-    cursor: pointer;
-    flex-shrink: 0;
-
-    &:hover { background: $bcg-light; }
-
-    &.selected {
-        background: $clr-hilight;
-        .mesh-bar-item-name { color: #000; }
-    }
-}
-
-.mesh-bar-item-name {
-    font-size: 10px;
-    color: $clr-default;
-    max-width: 60px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.mesh-bar-item-btn {
-    font-size: 10px;
-    color: $clr-disabled;
-    cursor: pointer;
-    padding: 1px 2px;
-    border-radius: 2px;
-    &:hover { color: $clr-active; background: rgba(255,255,255,0.1); }
-}
-
-// Collapsed mode hides bar
-.collapsed #mesh-bar {
-    display: none;
+.mesh-slider {
+    width: 64px !important;
 }

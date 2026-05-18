@@ -29,11 +29,17 @@ class StatusBar extends Container {
             text: localize('status-bar.splat-data').toUpperCase()
         });
 
+        const meshButton = new Button({
+            class: 'status-bar-toggle',
+            text: 'MESH'
+        });
+
         // Panel toggle logic
         const setActivePanel = (panel: string) => {
             activePanel = panel;
             timelineButton.dom.classList[panel === 'timeline' ? 'add' : 'remove']('active');
             splatDataButton.dom.classList[panel === 'splatData' ? 'add' : 'remove']('active');
+            meshButton.dom.classList[panel === 'mesh' ? 'add' : 'remove']('active');
             events.fire('statusBar.panelChanged', panel || null);
         };
 
@@ -43,6 +49,10 @@ class StatusBar extends Container {
 
         splatDataButton.on('click', () => {
             setActivePanel(activePanel === 'splatData' ? '' : 'splatData');
+        });
+
+        meshButton.on('click', () => {
+            setActivePanel(activePanel === 'mesh' ? '' : 'mesh');
         });
 
         // Right section: stats
@@ -75,6 +85,7 @@ class StatusBar extends Container {
 
         this.append(timelineButton);
         this.append(splatDataButton);
+        this.append(meshButton);
         this.append(statsContainer);
 
         // register tooltips
