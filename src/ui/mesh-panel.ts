@@ -251,6 +251,19 @@ class MeshPanel extends Container {
         const roughSlider   = makeSlider('Roughness',   0, 1, 0.0);
         const metalSlider   = makeSlider('Metalness',   0, 1, 1.0);
 
+        // Reflection far-clip slider (separate from material sliders — needs step:1 / wider range)
+        const clipRow2 = document.createElement('div');
+        clipRow2.className = 'mp-field-row';
+        const clipLbl2 = document.createElement('span');
+        clipLbl2.className = 'mp-field-lbl';
+        clipLbl2.textContent = 'Reflect Clip';
+        clipLbl2.title = 'Far clip multiplier used when capturing reflections. Raise this if the reflection has black patches.';
+        clipRow2.appendChild(clipLbl2);
+        const clipSlider2 = new SliderInput({ min: 1, max: 100, step: 1, value: 5 });
+        clipSlider2.dom.classList.add('mp-slider');
+        clipRow2.appendChild(clipSlider2.dom);
+        matSec.appendChild(clipRow2);
+
         // Re-capture button
         const captureRow = document.createElement('div');
         captureRow.className = 'mp-capture-row';
@@ -396,6 +409,15 @@ class MeshPanel extends Container {
         reflSlider.on('change', applyMat);
         roughSlider.on('change', applyMat);
         metalSlider.on('change', applyMat);
+
+        // Reflect Clip → drives the camera far-clip multiplier used during probe capture
+        clipSlider2.on('change', (value: number) => {
+            events.fire('camera.setClipFarMult', value);
+        });
+        // Keep in sync if changed from View panel
+        events.on('camera.clipFarMult', (value: number) => {
+            clipSlider2.value = value;
+        });
 
         // ── Events ────────────────────────────────────────────────────────────
         events.on('mesh.added', (mesh: MeshElement) => { addMeshRow(mesh); selectMesh(mesh); });
