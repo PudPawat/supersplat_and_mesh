@@ -2,7 +2,7 @@ import { Asset, Vec3, path } from 'playcanvas';
 
 import { ElementType } from './element';
 import { Events } from './events';
-import { MeshElement, MeshSource } from './mesh-element';
+import { MeshElement, MeshSource, ReflectionMode, setGlobalReflectionMode, getGlobalReflectionMode } from './mesh-element';
 import { MeshGizmo } from './mesh-gizmo';
 import { initMeshPlacement } from './mesh-placement';
 import { Scene } from './scene';
@@ -71,6 +71,21 @@ const initMeshHandler = (scene: Scene, events: Events) => {
     // ── remove ghost from list when placement completes / cancels ───────────
     events.on('mesh.ghost.added', (ghost: MeshElement) => {
         // ghost is NOT in meshList — it's temporary
+    });
+
+    // ── reflection mode toggle ──────────────────────────────────────────────
+    events.function('mesh.reflectionMode', () => getGlobalReflectionMode());
+
+    events.on('mesh.setReflectionMode', (mode: ReflectionMode) => {
+        setGlobalReflectionMode(mode);
+        // Rebuild materials for all live meshes so the change takes effect immediately
+        meshList.forEach(m => {
+            if (!(m as any)._useOriginalMaterials) {
+                (m as any)._buildMaterial();
+                (m as any)._walkAndApply((m as any).pivot);
+            }
+        });
+        events.fire('mesh.reflectionMode.changed', mode);
     });
 
     // ── re-capture reflections when 3DGS scene loads ────────────────────────

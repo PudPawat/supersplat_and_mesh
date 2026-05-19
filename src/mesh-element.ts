@@ -49,6 +49,17 @@ export type MeshSource =
     | { kind: 'primitive'; type: string }
     | { kind: 'container'; asset: Asset };
 
+/** Global reflection mode — shared by all MeshElements in the scene. */
+export type ReflectionMode = 'ssr' | 'probe';
+let _globalReflectionMode: ReflectionMode = 'ssr';
+
+/** Call this to switch all existing + future mesh materials between SSR and probe. */
+export const setGlobalReflectionMode = (mode: ReflectionMode) => {
+    _globalReflectionMode = mode;
+};
+
+export const getGlobalReflectionMode = (): ReflectionMode => _globalReflectionMode;
+
 class MeshElement extends Element {
     source: MeshSource;
     pivot: Entity;
@@ -197,8 +208,10 @@ class MeshElement extends Element {
         // Recreate material when switching to/from SSR so chunks update
         const scene = this.scene as Scene;
         const ssrTexture = scene ? (scene as any).ssrPass?.ssrSceneTexture : null;
-        const useSSR = !!ssrTexture;
+        // Use SSR only when: mode is 'ssr' AND the SSR pass is actually running
+        const useSSR = _globalReflectionMode === 'ssr' && !!ssrTexture;
 
+        // Recreate material when the mode or SSR availability changes
         if (!this._material) {
             this._material = new StandardMaterial();
         }
@@ -214,14 +227,17 @@ class MeshElement extends Element {
         mat.emissive.set(o.tintR * 0.04, o.tintG * 0.04, o.tintB * 0.04);
 
         if (useSSR) {
-            // SSR: inject the screen-space reflection chunk
+            // SSR mode: screen-space reflections via custom shader chunk
             (mat as any).chunks = { ...((mat as any).chunks ?? {}), reflectionEnvPS: ssrChunk };
             mat.setParameter('uSSRScene', ssrTexture);
+            mat.envAtlas = null;
         } else if (this._envAtlas) {
-            // Probe fallback
+            // Probe mode: pre-captured IBL atlas from object's world position
+            (mat as any).chunks = {};   // clear any SSR chunk
             mat.envAtlas = this._envAtlas;
             mat.useSkybox = false;
         } else {
+            (mat as any).chunks = {};
             mat.envAtlas = null;
             mat.useSkybox = true;
         }

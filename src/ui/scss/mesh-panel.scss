@@ -249,3 +249,27 @@
         color: $clr-active;
     }
 }
+
+// SSR / Probe toggle buttons
+.mp-mode-btn {
+    flex: 1;
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 4px;
+    font-size: 11px;
+    color: $clr-default;
+    background: $bcg-primary;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+
+    &:hover {
+        background: $bcg-light;
+    }
+
+    &.active {
+        background: $bcg-dark;
+        border-color: $clr-active;
+        color: $clr-active;
+    }
+}

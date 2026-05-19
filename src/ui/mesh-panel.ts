@@ -1,4 +1,4 @@
-import { Container, Label, SelectInput, SliderInput, VectorInput } from '@playcanvas/pcui';
+import { BooleanInput, Container, Label, SelectInput, SliderInput, VectorInput } from '@playcanvas/pcui';
 import { Vec3 } from 'playcanvas';
 
 import { Events } from '../events';
@@ -206,6 +206,31 @@ class MeshPanel extends Container {
         scroll.appendChild(rule());
         const matSec = section('mp-mat');
         matSec.appendChild(heading('Material'));
+
+        // ── Reflection mode toggle (SSR vs Probe) ────────────────────────────
+        const reflModeRow = document.createElement('div');
+        reflModeRow.className = 'mp-field-row';
+        const reflModeLbl = document.createElement('span');
+        reflModeLbl.className = 'mp-field-lbl';
+        reflModeLbl.textContent = 'Reflection';
+        reflModeLbl.title = 'SSR = Screen-Space (real-time). Probe = Cubemap capture (accurate, angle-independent).';
+        reflModeRow.appendChild(reflModeLbl);
+
+        // Two-button toggle: [SSR]  [Probe]
+        const reflModeWrap = document.createElement('div');
+        reflModeWrap.style.cssText = 'display:flex;gap:4px;flex:1;';
+        const ssrBtn = document.createElement('div');
+        ssrBtn.className = 'mp-mode-btn active';
+        ssrBtn.textContent = 'SSR';
+        ssrBtn.title = 'Screen-Space Reflections (real-time, may miss off-screen objects)';
+        const probeBtn = document.createElement('div');
+        probeBtn.className = 'mp-mode-btn';
+        probeBtn.textContent = 'Probe';
+        probeBtn.title = 'Cubemap probe capture (full 360°, click Re-capture to update)';
+        reflModeWrap.appendChild(ssrBtn);
+        reflModeWrap.appendChild(probeBtn);
+        reflModeRow.appendChild(reflModeWrap);
+        matSec.appendChild(reflModeRow);
 
         // Preset row
         const presetRow = document.createElement('div');
@@ -418,6 +443,30 @@ class MeshPanel extends Container {
         events.on('camera.clipFarMult', (value: number) => {
             clipSlider2.value = value;
         });
+
+        // ── Reflection mode toggle wiring ─────────────────────────────────────
+        const setReflMode = (mode: 'ssr' | 'probe') => {
+            ssrBtn.classList.toggle('active', mode === 'ssr');
+            probeBtn.classList.toggle('active', mode === 'probe');
+            // Re-capture + clip slider only relevant in probe mode
+            captureRow.style.display  = mode === 'probe' ? '' : 'none';
+            clipRow2.style.display    = mode === 'probe' ? '' : 'none';
+        };
+
+        ssrBtn.addEventListener('click', () => {
+            events.fire('mesh.setReflectionMode', 'ssr');
+        });
+        probeBtn.addEventListener('click', () => {
+            events.fire('mesh.setReflectionMode', 'probe');
+        });
+
+        events.on('mesh.reflectionMode.changed', (mode: string) => {
+            setReflMode(mode as 'ssr' | 'probe');
+        });
+
+        // Initialise from current global mode
+        const initMode: string = events.invoke('mesh.reflectionMode') ?? 'ssr';
+        setReflMode(initMode as 'ssr' | 'probe');
 
         // ── Events ────────────────────────────────────────────────────────────
         events.on('mesh.added', (mesh: MeshElement) => { addMeshRow(mesh); selectMesh(mesh); });
