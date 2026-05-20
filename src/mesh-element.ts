@@ -155,16 +155,31 @@ class MeshElement extends Element {
         }
 
         if (atlas) {
+            
             if (this._envAtlas) this._envAtlas.destroy();
-            this._envAtlas = atlas;
-            // Only rebuild + apply our material if we're NOT using original GLB materials.
-            // If the user is still on 'original', the env atlas is cached and will be used
-            // if they later switch to a reflective preset.
-            if (!this._useOriginalMaterials) {
-                this._buildMaterial();
-                this._walkAndApply(this.pivot);
-            }
-            console.log('[MeshElement] reflection applied for', this._name);
+                this._envAtlas = atlas;
+
+                if (!this._useOriginalMaterials) {
+                    // Custom material path: rebuild + apply
+                    this._buildMaterial();
+                    this._walkAndApply(this.pivot);
+                } else {
+                    // GLB path: inject envAtlas into existing original materials
+                    // so they reflect the GS scene without replacing PBR textures
+                    this._walkInjectEnvAtlas(this.pivot, atlas);
+                }
+                console.log('[MeshElement] reflection applied for', this._name);
+
+            // if (this._envAtlas) this._envAtlas.destroy();
+            // this._envAtlas = atlas;
+            // // Only rebuild + apply our material if we're NOT using original GLB materials.
+            // // If the user is still on 'original', the env atlas is cached and will be used
+            // // if they later switch to a reflective preset.
+            // if (!this._useOriginalMaterials) {
+            //     this._buildMaterial();
+            //     this._walkAndApply(this.pivot);
+            // }
+            // console.log('[MeshElement] reflection applied for', this._name);
         } else {
             console.warn('[MeshElement] all capture methods failed for', this._name);
         }
@@ -302,6 +317,35 @@ class MeshElement extends Element {
         this._applyToRender(entity);
         for (let i = 0; i < entity.children.length; i++) {
             this._walkAndApply(entity.children[i] as Entity);
+        }
+    }
+    /**
+     * Inject envAtlas into existing GLB materials WITHOUT replacing them.
+     * Preserves all original PBR textures (diffuse, normal, etc.) but adds
+     * scene reflections from the captured environment atlas.
+     */
+    private _walkInjectEnvAtlas(entity: Entity, atlas: Texture) {
+        const r = (entity as any).render;
+        if (r?.meshInstances) {
+            for (const mi of r.meshInstances) {
+                const mat = mi.material as StandardMaterial;
+                if (!mat) continue;
+
+                // Assign the captured GS scene as environment atlas
+                mat.envAtlas = atlas;
+                mat.useSkybox = false;
+
+                // Boost reflectivity if the original material has none
+                // (many GLB exporters set reflectivity = 0 by default)
+                if (mat.reflectivity < 0.1) {
+                    mat.reflectivity = 0.6;
+                }
+
+                mat.update();
+            }
+        }
+        for (let i = 0; i < entity.children.length; i++) {
+            this._walkInjectEnvAtlas(entity.children[i] as Entity, atlas);
         }
     }
 
