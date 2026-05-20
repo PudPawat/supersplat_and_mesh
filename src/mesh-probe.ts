@@ -39,20 +39,32 @@ import { ShaderQuad, SimpleRenderPass } from './utils/simple-render-pass';
 
 // ── Cube face order matches WebGL: +X=0, -X=1, +Y=2, -Y=3, +Z=4, -Z=5 ───────
 // Euler angles [pitch, yaw, roll] that point the PlayCanvas camera at each face.
-const CUBE_FACE_EULERS: Array<[number, number, number]> = [
-    [  0,  90, 0],   // face 0: POSITIVE_X  (right  +X)
-    [  0, 270, 0],   // face 1: NEGATIVE_X  (left   -X)
-    [-90,   0, 0],   // face 2: POSITIVE_Y  (up     +Y)
-    [ 90,   0, 0],   // face 3: NEGATIVE_Y  (down   -Y)
-    [  0, 180, 0],   // face 4: POSITIVE_Z  (back   +Z)
-    [  0,   0, 0],   // face 5: NEGATIVE_Z  (front  -Z)
+//
+// ORIENTATION NOTES:
+//   In PlayCanvas (default camera looks along -Z, Y-up):
+//     pitch = +90 → camera looks UP   (+Y), camera-up = +Z
+//     pitch = -90 → camera looks DOWN (-Y), camera-up = -Z
+//
+//   WebGL cubemap t-axis conventions:
+//     +Y face: t increases toward -Z  (camera-up = +Z → face is V-flipped)
+//     -Y face: t increases toward +Z  (camera-up = -Z → face is V-flipped)
+//   Both up/down faces need a V-flip so reprojectTexture samples correctly.
+//   The flipV column drives the uFlipV uniform in the blit shader.
+const CUBE_FACE_DATA: Array<{ euler: [number, number, number]; flipV: boolean }> = [
+    { euler: [  0,  90, 0], flipV: false },  // face 0: POSITIVE_X  (right +X)
+    { euler: [  0, 270, 0], flipV: false },  // face 1: NEGATIVE_X  (left  -X)
+    { euler: [ 90,   0, 0], flipV: true  },  // face 2: POSITIVE_Y  (up    +Y) ← pitch=+90 looks UP; V-flip for correct t-axis
+    { euler: [-90,   0, 0], flipV: true  },  // face 3: NEGATIVE_Y  (down  -Y) ← pitch=-90 looks DOWN; V-flip for correct t-axis
+    { euler: [  0, 180, 0], flipV: false },  // face 4: POSITIVE_Z  (back  +Z)
+    { euler: [  0,   0, 0], flipV: false },  // face 5: NEGATIVE_Z  (front -Z)
 ];
 
 const FACE_SIZE = 256;   // pixels per cube face
 
 // ── Crop-blit shader ──────────────────────────────────────────────────────────
 // Copies a rectangular UV region (uCrop) of the source into the full quad.
-// Used to extract the square center crop of the perspective framebuffer.
+// uFlipV = 1 flips the V coordinate — required for +Y/-Y faces to match
+// WebGL's cubemap t-axis convention.
 const BLIT_VERT = /* glsl */`
     attribute vec2 vertex_position;
     varying vec2 vUv;
@@ -64,10 +76,13 @@ const BLIT_VERT = /* glsl */`
 const BLIT_FRAG = /* glsl */`
     precision highp float;
     uniform sampler2D uBlit;
-    uniform vec4 uCrop;   // (x0, y0, cropW, cropH) in normalised UV space
+    uniform vec4  uCrop;   // (x0, y0, cropW, cropH) in normalised UV space
+    uniform float uFlipV;  // 1.0 = flip V axis, 0.0 = no flip
     varying vec2 vUv;
     void main() {
-        vec2 uv = uCrop.xy + vUv * uCrop.zw;
+        vec2 st = vUv;
+        if (uFlipV > 0.5) st.y = 1.0 - st.y;
+        vec2 uv = uCrop.xy + st * uCrop.zw;
         gl_FragColor = texture2D(uBlit, uv);
     }
 `;
@@ -117,10 +132,11 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
 
     // Build the blit quad (shared across all 6 face passes)
     const blitQuad = new ShaderQuad(device, BLIT_VERT, BLIT_FRAG, 'probe-face-blit');
-    let blitSrc:  Texture  | null = null;
-    let blitCrop: number[] = [0, 0, 1, 1];
+    let blitSrc:   Texture  | null = null;
+    let blitCrop:  number[] = [0, 0, 1, 1];
+    let blitFlipV: number   = 0;
     const blitPass = new SimpleRenderPass(device, blitQuad, {
-        vars: () => ({ uBlit: blitSrc, uCrop: blitCrop })
+        vars: () => ({ uBlit: blitSrc, uCrop: blitCrop, uFlipV: blitFlipV })
     });
 
     // Freeze the screen while capturing (user sees a still frame, no flicker)
@@ -128,7 +144,7 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
 
     try {
         for (let face = 0; face < 6; face++) {
-            const [pitch, yaw, roll] = CUBE_FACE_EULERS[face];
+            const { euler: [pitch, yaw, roll], flipV } = CUBE_FACE_DATA[face];
 
             // ── Step 1: render the scene at the probe position / direction ────
             await new Promise<void>(resolve => {
@@ -156,13 +172,14 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
             // At 90° vertical FOV on a W×H viewport the horizontal coverage is
             // 90° × (W/H).  The square H×H center crop captures exactly 90°×90°.
             const cropPx = Math.min(W, H);
-            blitSrc  = srcTex;
-            blitCrop = [
+            blitSrc   = srcTex;
+            blitCrop  = [
                 (W - cropPx) / 2 / W,   // x0  (UV)
                 (H - cropPx) / 2 / H,   // y0  (UV)
                 cropPx / W,             // width  (UV)
                 cropPx / H,             // height (UV)
             ];
+            blitFlipV = flipV ? 1.0 : 0.0;
 
             // A RenderTarget pointing at this specific cube face
             const faceRT = new RenderTarget({ colorBuffer: cubeMap, face, depth: false });
