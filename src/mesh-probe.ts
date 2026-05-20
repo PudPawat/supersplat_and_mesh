@@ -169,8 +169,16 @@ export const captureReflectionProbe = async (
         for (let face = 0; face < 6; face++) {
             const { euler: [pitch, yaw, roll], flipV } = CUBE_FACE_DATA[face];
 
-            // ── Step 1: render the scene at the probe position / direction ────
-            await new Promise<void>(resolve => {
+            // ── Steps 1 + 2: set camera in prerender, blit in the SAME frame's postrender ──
+            //
+            // TIMING NOTE: two separate awaits (prerender then postrender) look correct
+            // but are NOT — prerender/render/postrender all fire synchronously inside one
+            // rAF callback.  By the time the first await resolves (via a microtask), the
+            // postrender for that frame has already fired and we end up capturing frame N+1,
+            // where the orbit controller has reset the camera back to the user's view.
+            // Fix: register the postrender listener INSIDE the prerender handler so both
+            // belong to the same rAF callback and the blit sees the correct render.
+            await new Promise<void>((resolve, reject) => {
                 scene.app.once('prerender', () => {
                     entity.setLocalPosition(worldPos.x, worldPos.y, worldPos.z);
                     entity.setLocalEulerAngles(pitch, yaw, roll);
@@ -178,41 +186,40 @@ export const captureReflectionProbe = async (
                     entity.camera.fov = 90;
                     // Refit clipping planes for this face direction
                     scene.camera.fitClippingPlanes(entity.getLocalPosition(), entity.forward);
-                    resolve();
+
+                    // Register postrender SYNCHRONOUSLY here — guaranteed same frame
+                    scene.app.once('postrender', () => {
+                        try {
+                            const srcTex = colorTarget.colorBuffer;
+                            if (!srcTex) { resolve(); return; }
+
+                            const W = srcTex.width;
+                            const H = srcTex.height;
+                            // Square centre crop captures exactly 90°×90° at 90° vertical FOV
+                            const cropPx = Math.min(W, H);
+                            blitSrc   = srcTex;
+                            blitCrop  = [
+                                (W - cropPx) / 2 / W,   // x0  (UV)
+                                (H - cropPx) / 2 / H,   // y0  (UV)
+                                cropPx / W,             // width  (UV)
+                                cropPx / H,             // height (UV)
+                            ];
+                            blitFlipV = flipV ? 1.0 : 0.0;
+
+                            // GPU-blit into this cube face
+                            const faceRT = new RenderTarget({ colorBuffer: cubeMap, face, depth: false });
+                            device.setRenderTarget(faceRT);
+                            (device as any).updateBegin();
+                            blitPass.execute();
+                            (device as any).updateEnd();
+                            faceRT.destroy();
+
+                            console.log(`[reflProbe] face ${face} (${pitch}°,${yaw}°) captured`);
+                        } catch (err) { reject(err); return; }
+                        resolve();
+                    });
                 });
             });
-
-            await new Promise<void>(resolve => {
-                scene.app.once('postrender', resolve);
-            });
-
-            // ── Step 2: GPU-blit the square center crop → this cube face ─────
-            const srcTex = colorTarget.colorBuffer;
-            if (!srcTex) continue;
-
-            const W = srcTex.width;
-            const H = srcTex.height;
-            // At 90° vertical FOV on a W×H viewport the horizontal coverage is
-            // 90° × (W/H).  The square H×H center crop captures exactly 90°×90°.
-            const cropPx = Math.min(W, H);
-            blitSrc   = srcTex;
-            blitCrop  = [
-                (W - cropPx) / 2 / W,   // x0  (UV)
-                (H - cropPx) / 2 / H,   // y0  (UV)
-                cropPx / W,             // width  (UV)
-                cropPx / H,             // height (UV)
-            ];
-            blitFlipV = flipV ? 1.0 : 0.0;
-
-            // A RenderTarget pointing at this specific cube face
-            const faceRT = new RenderTarget({ colorBuffer: cubeMap, face, depth: false });
-            device.setRenderTarget(faceRT);
-            (device as any).updateBegin();
-            blitPass.execute();
-            (device as any).updateEnd();
-            faceRT.destroy();
-
-            console.log(`[reflProbe] face ${face} (${pitch}°,${yaw}°) captured`);
         }
 
         // ── Step 3: cubemap → equirectangular ────────────────────────────────
