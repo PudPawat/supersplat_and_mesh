@@ -1,0 +1,251 @@
+@use 'colors.scss' as *;
+
+// ── Panel shell ───────────────────────────────────────────────────────────────
+// Lives in the main-container flex column between canvas and status bar.
+// Fixed height + internal scroll; hidden via .pcui-hidden.
+
+#mesh-panel {
+    width: 100%;
+    height: 280px;          // tall enough to see 3-4 sections at once
+    flex-shrink: 0;
+    background-color: $bcg-darker;
+    border-top: 1px solid $bcg-lighter;
+
+    &:not(.pcui-hidden) {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+// ── Scroll container ──────────────────────────────────────────────────────────
+
+#mesh-panel-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 0 8px 0;
+
+    // thin custom scrollbar
+    scrollbar-width: thin;
+    scrollbar-color: $bcg-light transparent;
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-thumb { background: $bcg-light; border-radius: 2px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+}
+
+// ── Section ───────────────────────────────────────────────────────────────────
+
+.mp-section {
+    padding: 8px 12px 6px;
+}
+
+// ── Horizontal rule between sections ─────────────────────────────────────────
+
+.mp-rule {
+    height: 1px;
+    background: $bcg-primary;
+    margin: 0 8px;
+    flex-shrink: 0;
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+.mp-heading {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: $clr-disabled;
+    margin-bottom: 6px;
+}
+
+// ── Button grid (shapes / mode) ───────────────────────────────────────────────
+
+.mp-btn-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+// Each shape/mode item: icon + label stacked vertically
+.mp-shape-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover .mp-btn {
+        background: $bcg-light;
+        color: $clr-active;
+    }
+}
+
+.mp-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: $bcg-primary;
+    font-size: 16px;
+    color: $clr-default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.1s, color 0.1s;
+
+    &.active {
+        background: $clr-hilight;
+        color: #000;
+    }
+}
+
+.mp-btn-accent {
+    background: $bcg-primary;
+    color: $clr-hilight;
+    font-weight: bold;
+}
+
+.mp-btn-label {
+    font-size: 9px;
+    color: $clr-disabled;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+// ── Object list rows ──────────────────────────────────────────────────────────
+
+#mp-obj-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mp-obj-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    background: $bcg-primary;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover { background: $bcg-light; }
+
+    &.active {
+        background: $clr-hilight;
+        .mp-obj-name { color: #000; }
+        .mp-obj-icon { color: #000; }
+        .mp-obj-btn  { color: #333; }
+    }
+}
+
+.mp-obj-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.mp-obj-name {
+    font-size: 11px;
+    color: $clr-default;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mp-obj-btn {
+    font-size: 11px;
+    color: $clr-disabled;
+    cursor: pointer;
+    padding: 2px 3px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    line-height: 1;
+    &:hover { color: $clr-active; background: rgba(255,255,255,0.12); }
+}
+
+.mp-obj-del:hover { color: #e55 !important; }
+
+// ── Transform rows ────────────────────────────────────────────────────────────
+
+.mp-vec-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.mp-vec-lbl {
+    font-size: 10px;
+    color: $clr-disabled;
+    width: 52px;
+    flex-shrink: 0;
+}
+
+// Compact the numeric inputs inside VectorInput
+.mp-vec {
+    flex: 1 1 auto;
+    .pcui-vector-input-element {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+    }
+}
+
+// ── Material rows ─────────────────────────────────────────────────────────────
+
+.mp-field-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.mp-field-lbl {
+    font-size: 10px;
+    color: $clr-disabled;
+    width: 72px;
+    flex-shrink: 0;
+}
+
+.mp-select {
+    flex: 1 1 auto;
+}
+
+.mp-slider {
+    flex: 1 1 auto !important;
+    width: auto !important;
+}
+
+// ── Re-capture button ─────────────────────────────────────────────────────────
+
+.mp-capture-row {
+    margin-top: 6px;
+}
+
+.mp-capture-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    background: $bcg-primary;
+    border-radius: 4px;
+    font-size: 11px;
+    color: $clr-default;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+        background: $bcg-light;
+        color: $clr-active;
+    }
+}
