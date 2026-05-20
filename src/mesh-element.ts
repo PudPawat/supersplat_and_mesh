@@ -31,13 +31,13 @@ export interface MeshMaterialOptions {
 }
 
 const PRESETS: Record<MeshMaterialPreset, Partial<MeshMaterialOptions>> = {
-    original: { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.0,  metalness: 0.0,  roughness: 1.0  },
+    original: { opacity: 0.99, tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.0,  metalness: 0.0,  roughness: 1.0  },
     glass:    { opacity: 0.75, tintR: 0.88, tintG: 0.96, tintB: 1.00, reflectivity: 1.0,  metalness: 0.3,  roughness: 0.0  },
-    mirror:   { opacity: 1.0,  tintR: 0.95, tintG: 0.95, tintB: 0.95, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.0  },
-    metal:    { opacity: 1.0,  tintR: 0.9,  tintG: 0.85, tintB: 0.75, reflectivity: 0.7,  metalness: 1.0,  roughness: 0.2  },
-    plastic:  { opacity: 1.0,  tintR: 1.0,  tintG: 0.3,  tintB: 0.3,  reflectivity: 0.2,  metalness: 0.0,  roughness: 0.4  },
-    custom:   { opacity: 1.0,  tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.5,  metalness: 0.0,  roughness: 0.2  },
-    gold:     { opacity: 1.0,  tintR: 1.0,  tintG: 0.78, tintB: 0.18, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.05 },
+    mirror:   { opacity: 0.99, tintR: 0.95, tintG: 0.95, tintB: 0.95, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.0  },
+    metal:    { opacity: 0.99, tintR: 0.9,  tintG: 0.85, tintB: 0.75, reflectivity: 0.7,  metalness: 1.0,  roughness: 0.2  },
+    plastic:  { opacity: 0.99, tintR: 1.0,  tintG: 0.3,  tintB: 0.3,  reflectivity: 0.2,  metalness: 0.0,  roughness: 0.4  },
+    custom:   { opacity: 0.99, tintR: 1.0,  tintG: 1.0,  tintB: 1.0,  reflectivity: 0.5,  metalness: 0.0,  roughness: 0.2  },
+    gold:     { opacity: 0.99, tintR: 1.0,  tintG: 0.78, tintB: 0.18, reflectivity: 1.0,  metalness: 1.0,  roughness: 0.05 },
     wave:     { opacity: 0.22, tintR: 0.82, tintG: 0.96, tintB: 1.0,  reflectivity: 0.9,  metalness: 0.15, roughness: 0.0  },
 };
 
