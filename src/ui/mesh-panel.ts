@@ -1,4 +1,4 @@
-import { BooleanInput, Container, Label, SelectInput, SliderInput, VectorInput } from '@playcanvas/pcui';
+import { Container, Label, SelectInput, SliderInput, VectorInput } from '@playcanvas/pcui';
 import { Vec3 } from 'playcanvas';
 
 import { Events } from '../events';
