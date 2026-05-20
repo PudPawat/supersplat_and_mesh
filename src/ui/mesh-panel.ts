@@ -364,8 +364,8 @@ class MeshPanel extends Container {
                 reflSlider.value    = o.reflectivity;
                 roughSlider.value   = o.roughness;
                 metalSlider.value   = o.metalness;
-                // sync probe shape toggle to the selected mesh's current shape
-                setProbeShape(mesh.probeShape);
+                // sync probe shape toggle to the current global shape
+                setProbeShape(events.invoke('mesh.probeShape') ?? 'cube');
             }
             events.fire('mesh.selected', mesh);
         };
@@ -501,6 +501,10 @@ class MeshPanel extends Container {
         // Initialise from current global mode
         const initMode: string = events.invoke('mesh.reflectionMode') ?? 'ssr';
         setReflMode(initMode as 'ssr' | 'probe');
+
+        // Initialise probe shape toggle
+        const initShape: string = events.invoke('mesh.probeShape') ?? 'cube';
+        setProbeShape(initShape as 'cube' | 'sphere');
 
         // ── Probe shape toggle wiring ─────────────────────────────────────────
         cubeShapeBtn.addEventListener('click', () => {

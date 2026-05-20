@@ -2,8 +2,7 @@ import { Asset, Vec3, path } from 'playcanvas';
 
 import { ElementType } from './element';
 import { Events } from './events';
-import { MeshElement, MeshSource, ReflectionMode, setGlobalReflectionMode, getGlobalReflectionMode } from './mesh-element';
-import { ProbeShape } from './mesh-probe';
+import { MeshElement, MeshSource, ReflectionMode, setGlobalReflectionMode, getGlobalReflectionMode, setGlobalProbeShape, getGlobalProbeShape, ProbeShape } from './mesh-element';
 import { MeshGizmo } from './mesh-gizmo';
 import { initMeshPlacement } from './mesh-placement';
 import { Scene } from './scene';
@@ -94,19 +93,18 @@ const initMeshHandler = (scene: Scene, events: Events) => {
         events.fire('mesh.reflectionMode.changed', mode);
     });
 
-    // ── probe shape (cube / sphere) per selected mesh ───────────────────────
-    events.function('mesh.probeShape', () => {
-        const sel: MeshElement | null = events.invoke('mesh.selectedMesh');
-        return sel ? sel.probeShape : 'cube';
-    });
+    // ── probe shape (cube / sphere) — global, shared by all meshes ──────────
+    events.function('mesh.probeShape', () => getGlobalProbeShape());
 
     events.on('mesh.setProbeShape', (shape: ProbeShape) => {
-        const sel: MeshElement | null = events.invoke('mesh.selectedMesh');
-        if (!sel) return;
-        sel.probeShape = shape;
+        setGlobalProbeShape(shape);
         events.fire('mesh.probeShape.changed', shape);
-        // re-capture immediately so the user sees the difference
-        sel.captureReflection();
+        // re-capture all meshes with the new shape setting
+        setTimeout(async () => {
+            for (const m of meshList) {
+                await m.captureReflection();
+            }
+        }, 0);
     });
 
     // ── re-capture reflections when 3DGS scene loads ────────────────────────

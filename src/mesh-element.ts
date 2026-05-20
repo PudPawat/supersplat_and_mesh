@@ -12,7 +12,7 @@ import {
 
 import { Element, ElementType } from './element';
 import { captureSceneEnv } from './mesh-cubemap';
-import { captureReflectionProbe, ProbeShape } from './mesh-probe';
+import { captureReflectionProbe } from './mesh-probe';
 import { ssrChunk } from './shaders/ssr-shader';
 import { Scene } from './scene';
 
@@ -60,6 +60,14 @@ export const setGlobalReflectionMode = (mode: ReflectionMode) => {
 
 export const getGlobalReflectionMode = (): ReflectionMode => _globalReflectionMode;
 
+/** Global probe shape — shared by all MeshElements in the scene. */
+export type { ProbeShape } from './mesh-probe';
+import { ProbeShape } from './mesh-probe';
+let _globalProbeShape: ProbeShape = 'cube';
+
+export const setGlobalProbeShape = (shape: ProbeShape) => { _globalProbeShape = shape; };
+export const getGlobalProbeShape = (): ProbeShape => _globalProbeShape;
+
 class MeshElement extends Element {
     source: MeshSource;
     pivot: Entity;
@@ -70,7 +78,6 @@ class MeshElement extends Element {
     private _useOriginalMaterials = false;
     private _material: StandardMaterial | null = null;
     private _envAtlas: Texture | null = null;
-    probeShape: ProbeShape = 'cube';
 
     constructor(source: MeshSource, name: string) {
         super(ElementType.model);
@@ -159,7 +166,7 @@ class MeshElement extends Element {
         const worldPos = this.pivot.getPosition().clone();
         console.log('[MeshElement] starting reflection probe at', worldPos.toString(), 'for', this._name);
 
-        let atlas = await captureReflectionProbe(scene, worldPos, this.probeShape);
+        let atlas = await captureReflectionProbe(scene, worldPos, _globalProbeShape);
 
         if (!atlas) {
             console.warn('[MeshElement] probe failed, falling back to screen capture for', this._name);
