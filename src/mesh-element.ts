@@ -12,7 +12,7 @@ import {
 
 import { Element, ElementType } from './element';
 import { captureSceneEnv } from './mesh-cubemap';
-import { captureReflectionProbe } from './mesh-probe';
+import { captureReflectionProbe, ProbeShape } from './mesh-probe';
 import { ssrChunk } from './shaders/ssr-shader';
 import { Scene } from './scene';
 
@@ -70,6 +70,7 @@ class MeshElement extends Element {
     private _useOriginalMaterials = false;
     private _material: StandardMaterial | null = null;
     private _envAtlas: Texture | null = null;
+    probeShape: ProbeShape = 'cube';
 
     constructor(source: MeshSource, name: string) {
         super(ElementType.model);
@@ -158,7 +159,7 @@ class MeshElement extends Element {
         const worldPos = this.pivot.getPosition().clone();
         console.log('[MeshElement] starting reflection probe at', worldPos.toString(), 'for', this._name);
 
-        let atlas = await captureReflectionProbe(scene, worldPos);
+        let atlas = await captureReflectionProbe(scene, worldPos, this.probeShape);
 
         if (!atlas) {
             console.warn('[MeshElement] probe failed, falling back to screen capture for', this._name);

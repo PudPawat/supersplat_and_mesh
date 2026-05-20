@@ -232,6 +232,30 @@ class MeshPanel extends Container {
         reflModeRow.appendChild(reflModeWrap);
         matSec.appendChild(reflModeRow);
 
+        // ── Probe shape toggle (Cube / Sphere) — shown only in probe mode ────
+        const probeShapeRow = document.createElement('div');
+        probeShapeRow.className = 'mp-field-row';
+        const probeShapeLbl = document.createElement('span');
+        probeShapeLbl.className = 'mp-field-lbl';
+        probeShapeLbl.textContent = 'Probe Shape';
+        probeShapeLbl.title = 'Cube: 6 axis-aligned faces (fast). Sphere: higher resolution + more samples (slower, smoother on curved surfaces).';
+        probeShapeRow.appendChild(probeShapeLbl);
+
+        const probeShapeWrap = document.createElement('div');
+        probeShapeWrap.style.cssText = 'display:flex;gap:4px;flex:1;';
+        const cubeShapeBtn = document.createElement('div');
+        cubeShapeBtn.className = 'mp-mode-btn active';
+        cubeShapeBtn.textContent = 'Cube';
+        cubeShapeBtn.title = '6 axis-aligned captures, 256px faces — fast';
+        const sphereShapeBtn = document.createElement('div');
+        sphereShapeBtn.className = 'mp-mode-btn';
+        sphereShapeBtn.textContent = 'Sphere';
+        sphereShapeBtn.title = '6 captures, 512px faces, 16× samples — smoother on curved surfaces';
+        probeShapeWrap.appendChild(cubeShapeBtn);
+        probeShapeWrap.appendChild(sphereShapeBtn);
+        probeShapeRow.appendChild(probeShapeWrap);
+        matSec.appendChild(probeShapeRow);
+
         // Preset row
         const presetRow = document.createElement('div');
         presetRow.className = 'mp-field-row';
@@ -322,6 +346,12 @@ class MeshPanel extends Container {
             panelUpdating = false;
         };
 
+        // Defined here (before selectMesh) so selectMesh can call it.
+        const setProbeShape = (shape: 'cube' | 'sphere') => {
+            cubeShapeBtn.classList.toggle('active', shape === 'cube');
+            sphereShapeBtn.classList.toggle('active', shape === 'sphere');
+        };
+
         const selectMesh = (mesh: MeshElement | null) => {
             selectedMesh = mesh;
             meshItems.forEach((chip, m) => chip.classList.toggle('active', m === mesh));
@@ -334,6 +364,8 @@ class MeshPanel extends Container {
                 reflSlider.value    = o.reflectivity;
                 roughSlider.value   = o.roughness;
                 metalSlider.value   = o.metalness;
+                // sync probe shape toggle to the selected mesh's current shape
+                setProbeShape(mesh.probeShape);
             }
             events.fire('mesh.selected', mesh);
         };
@@ -448,9 +480,11 @@ class MeshPanel extends Container {
         const setReflMode = (mode: 'ssr' | 'probe') => {
             ssrBtn.classList.toggle('active', mode === 'ssr');
             probeBtn.classList.toggle('active', mode === 'probe');
-            // Re-capture + clip slider only relevant in probe mode
-            captureRow.style.display  = mode === 'probe' ? '' : 'none';
-            clipRow2.style.display    = mode === 'probe' ? '' : 'none';
+            // Re-capture + clip slider + probe shape only relevant in probe mode
+            const probeOnly = mode === 'probe' ? '' : 'none';
+            captureRow.style.display    = probeOnly;
+            clipRow2.style.display      = probeOnly;
+            probeShapeRow.style.display = probeOnly;
         };
 
         ssrBtn.addEventListener('click', () => {
@@ -467,6 +501,18 @@ class MeshPanel extends Container {
         // Initialise from current global mode
         const initMode: string = events.invoke('mesh.reflectionMode') ?? 'ssr';
         setReflMode(initMode as 'ssr' | 'probe');
+
+        // ── Probe shape toggle wiring ─────────────────────────────────────────
+        cubeShapeBtn.addEventListener('click', () => {
+            events.fire('mesh.setProbeShape', 'cube');
+        });
+        sphereShapeBtn.addEventListener('click', () => {
+            events.fire('mesh.setProbeShape', 'sphere');
+        });
+
+        events.on('mesh.probeShape.changed', (shape: string) => {
+            setProbeShape(shape as 'cube' | 'sphere');
+        });
 
         // ── Events ────────────────────────────────────────────────────────────
         events.on('mesh.added', (mesh: MeshElement) => { addMeshRow(mesh); selectMesh(mesh); });

@@ -59,7 +59,23 @@ const CUBE_FACE_DATA: Array<{ euler: [number, number, number]; flipV: boolean }>
     { euler: [  0,   0, 0], flipV: false },  // face 5: NEGATIVE_Z  (front -Z)
 ];
 
-const FACE_SIZE = 256;   // pixels per cube face
+/** Capture geometry for the reflection probe. */
+export type ProbeShape = 'cube' | 'sphere';
+
+// Quality settings per probe shape:
+//   cube   – 6 axis-aligned faces, 256 px, fast.
+//   sphere – same 6 faces but higher resolution + more reprojection samples;
+//            produces a smoother, higher-fidelity IBL atlas suited for curved
+//            surfaces (spheres, capsules) where cube seams are more visible.
+const PROBE_QUALITY: Record<ProbeShape, {
+    faceSize:   number;
+    numSamples: number;
+    equirectW:  number;
+    equirectH:  number;
+}> = {
+    cube:   { faceSize: 256, numSamples:  4, equirectW:  512, equirectH: 256 },
+    sphere: { faceSize: 512, numSamples: 16, equirectW: 1024, equirectH: 512 },
+};
 
 // ── Crop-blit shader ──────────────────────────────────────────────────────────
 // Copies a rectangular UV region (uCrop) of the source into the full quad.
@@ -90,7 +106,11 @@ const BLIT_FRAG = /* glsl */`
 // ── Mutex: one probe at a time ────────────────────────────────────────────────
 let _probeRunning = false;
 
-export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Promise<Texture | null> => {
+export const captureReflectionProbe = async (
+    scene: Scene,
+    worldPos: Vec3,
+    shape: ProbeShape = 'cube'
+): Promise<Texture | null> => {
     if (_probeRunning) {
         console.warn('[reflProbe] already running — skipping concurrent request');
         return null;
@@ -116,12 +136,15 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
     savedRot.copy(entity.getLocalRotation());
     const savedFov = entity.camera.fov;
 
+    const { faceSize, numSamples, equirectW, equirectH } = PROBE_QUALITY[shape];
+    console.log(`[reflProbe] shape=${shape} faceSize=${faceSize} numSamples=${numSamples}`);
+
     // Build the target cubemap (empty — faces will be filled by blit passes)
     const cubeMap = new Texture(device, {
         name: 'probeCube',
         cubemap: true,
-        width:  FACE_SIZE,
-        height: FACE_SIZE,
+        width:  faceSize,
+        height: faceSize,
         format: PIXELFORMAT_RGBA8,
         mipmaps: false,
         minFilter: FILTER_LINEAR,
@@ -197,7 +220,7 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
         // reads all 6 faces and produces a full-sphere equirect image.
         const equirect = new Texture(device, {
             name: 'probeEquirect',
-            width: 512, height: 256,
+            width: equirectW, height: equirectH,
             format: PIXELFORMAT_RGBA8,
             projection: TEXTUREPROJECTION_EQUIRECT,
             mipmaps: false,
@@ -206,7 +229,7 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
             addressU: ADDRESS_CLAMP_TO_EDGE,
             addressV: ADDRESS_CLAMP_TO_EDGE,
         });
-        reprojectTexture(cubeMap, equirect, { numSamples: 4 });
+        reprojectTexture(cubeMap, equirect, { numSamples });
 
         // ── Step 4: prefiltered IBL atlas ─────────────────────────────────────
         const atlas = EnvLighting.generatePrefilteredAtlas([equirect]);
