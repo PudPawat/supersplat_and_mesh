@@ -78,11 +78,16 @@ const initMeshHandler = (scene: Scene, events: Events) => {
 
     events.on('mesh.setReflectionMode', (mode: ReflectionMode) => {
         setGlobalReflectionMode(mode);
-        // Rebuild materials for all live meshes so the change takes effect immediately
+        // Destroy then recreate each mesh's material so the shader is compiled
+        // fresh with the correct chunks.  Simply mutating chunks on a cached
+        // material is unreliable — PlayCanvas may keep using the old shader.
         meshList.forEach(m => {
             if (!(m as any)._useOriginalMaterials) {
+                const oldMat = (m as any)._material;
+                (m as any)._material = null;   // force recreation in _buildMaterial
                 (m as any)._buildMaterial();
                 (m as any)._walkAndApply((m as any).pivot);
+                if (oldMat) oldMat.destroy();  // clean up GPU resources
             }
         });
         events.fire('mesh.reflectionMode.changed', mode);

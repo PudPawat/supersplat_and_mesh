@@ -227,13 +227,15 @@ class MeshElement extends Element {
         mat.emissive.set(o.tintR * 0.04, o.tintG * 0.04, o.tintB * 0.04);
 
         if (useSSR) {
-            // SSR mode: screen-space reflections via custom shader chunk
-            (mat as any).chunks = { ...((mat as any).chunks ?? {}), reflectionEnvPS: ssrChunk };
+            // SSR mode: screen-space reflections via custom shader chunk.
+            // Do NOT touch envAtlas here — PlayCanvas won't generate reflection
+            // code at all if there is no env source, which would make the SSR
+            // chunk replacement a no-op and the object go black.
+            (mat as any).chunks = { reflectionEnvPS: ssrChunk };
             mat.setParameter('uSSRScene', ssrTexture);
-            mat.envAtlas = null;
         } else if (this._envAtlas) {
             // Probe mode: pre-captured IBL atlas from object's world position
-            (mat as any).chunks = {};   // clear any SSR chunk
+            (mat as any).chunks = {};
             mat.envAtlas = this._envAtlas;
             mat.useSkybox = false;
         } else {
