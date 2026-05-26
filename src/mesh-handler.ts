@@ -78,16 +78,22 @@ const initMeshHandler = (scene: Scene, events: Events) => {
 
     events.on('mesh.setReflectionMode', (mode: ReflectionMode) => {
         setGlobalReflectionMode(mode);
-        // Destroy then recreate each mesh's material so the shader is compiled
-        // fresh with the correct chunks.  Simply mutating chunks on a cached
-        // material is unreliable — PlayCanvas may keep using the old shader.
         meshList.forEach(m => {
-            if (!(m as any)._useOriginalMaterials) {
+            if ((m as any)._useOriginalMaterials) {
+                // GLB import: patch the env source directly on each original material.
+                // In probe mode restore the captured atlas; in SSR mode clear it so the
+                // object uses the default skybox (SSR chunk injection on GLB materials
+                // is not currently supported).
+                const atlas = mode === 'probe' ? (m as any)._envAtlas : null;
+                (m as any)._walkAndApplyEnv((m as any).pivot, atlas);
+            } else {
+                // Custom material: destroy + recreate so the shader recompiles with the
+                // correct chunks (mutating chunks on a cached material is unreliable).
                 const oldMat = (m as any)._material;
-                (m as any)._material = null;   // force recreation in _buildMaterial
+                (m as any)._material = null;
                 (m as any)._buildMaterial();
                 (m as any)._walkAndApply((m as any).pivot);
-                if (oldMat) oldMat.destroy();  // clean up GPU resources
+                if (oldMat) oldMat.destroy();
             }
         });
         events.fire('mesh.reflectionMode.changed', mode);

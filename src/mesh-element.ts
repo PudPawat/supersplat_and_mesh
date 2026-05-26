@@ -176,10 +176,11 @@ class MeshElement extends Element {
         if (atlas) {
             if (this._envAtlas) this._envAtlas.destroy();
             this._envAtlas = atlas;
-            // Only rebuild + apply our material if we're NOT using original GLB materials.
-            // If the user is still on 'original', the env atlas is cached and will be used
-            // if they later switch to a reflective preset.
-            if (!this._useOriginalMaterials) {
+            if (this._useOriginalMaterials) {
+                // GLB import: keep all original PBR properties, just swap the env source
+                // so the car/object reflects the 3DGS scene instead of the default skybox.
+                this._walkAndApplyEnv(this.pivot, atlas);
+            } else {
                 this._buildMaterial();
                 this._walkAndApply(this.pivot);
             }
@@ -301,6 +302,35 @@ class MeshElement extends Element {
             e.addComponent('render', { type: 'torus' });
             e.render.layers = [scene.meshLayer.id];
         });
+    }
+
+    /**
+     * Walk the hierarchy and apply an envAtlas (or clear it) on every existing
+     * material — used for GLB imports where we want to keep the original PBR
+     * properties but still show the probe-captured reflection.
+     * atlas = null → restore skybox reflections (e.g. when switching to SSR).
+     */
+    private _walkAndApplyEnv(entity: Entity, atlas: Texture | null) {
+        const r = (entity as any).render;
+        if (r?.meshInstances) {
+            for (const mi of r.meshInstances) {
+                const mat = mi.material as StandardMaterial | null;
+                if (!mat) continue;
+                if (atlas) {
+                    (mat as any).chunks = {};   // clear any stale SSR chunks
+                    mat.envAtlas   = atlas;
+                    mat.useSkybox  = false;
+                } else {
+                    (mat as any).chunks = {};
+                    mat.envAtlas   = null;
+                    mat.useSkybox  = true;
+                }
+                mat.update();
+            }
+        }
+        for (let i = 0; i < entity.children.length; i++) {
+            this._walkAndApplyEnv(entity.children[i] as Entity, atlas);
+        }
     }
 
     /** Reassign layer only — does NOT touch materials. Used for GLB containers. */
