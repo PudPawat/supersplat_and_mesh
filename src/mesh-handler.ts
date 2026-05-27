@@ -174,7 +174,11 @@ const loadMeshFile = async (
                 URL.revokeObjectURL(url);
                 const source: MeshSource = { kind: 'container', asset };
                 const mesh = new MeshElement(source, file.name);
-                scene.add(mesh).then(() => { register(mesh); resolve(); });
+                scene.add(mesh).then(() => {
+                    mesh.setScale(new Vec3(0.03, 0.03, 0.03));
+                    register(mesh);
+                    resolve();
+                });
             });
 
             asset.on('error', (err: string) => {
@@ -210,7 +214,7 @@ const loadMeshUrl = async (
                 const source: MeshSource = { kind: 'container', asset };
                 const mesh = new MeshElement(source, displayName);
                 scene.add(mesh).then(() => {
-                    mesh.setScale(new Vec3(0.1, 0.1, 0.1));
+                    mesh.setScale(new Vec3(0.03, 0.03, 0.03));
                     register(mesh);
                     resolve();
                 });
