@@ -65,18 +65,28 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
 
     _probeRunning = true;
 
-    // Save camera state so we can restore perfectly
+    // Save camera/render-helper state so we can restore perfectly.
+    // Reflection probes must capture only the real scene, not editor helpers.
+    // Otherwise bright X/Y/Z transform gizmos or colored grid axes get baked into
+    // the envAtlas and appear as red/green/blue streaks on glossy car paint.
     const savedPos = entity.getLocalPosition().clone();
     const savedRot = new Quat();
     savedRot.copy(entity.getLocalRotation());
+    const savedFinalPassEnabled = finalPass.enabled;
+    const savedRenderOverlays = scene.camera.renderOverlays;
+    const savedGizmoLayerEnabled = scene.gizmoLayer.enabled;
 
-    // Freeze screen output — user sees a still frame while we capture
+    // Freeze screen output — user sees a still frame while we capture.
+    // Hide debug overlays and gizmos only for the probe frames.
     finalPass.enabled = false;
+    scene.camera.renderOverlays = false;
+    scene.gizmoLayer.enabled = false;
 
     const equirects: Texture[] = [];
 
     try {
         for (const [pitch, yaw, roll] of CAPTURE_EULERS) {
+            scene.forceRender = true;
 
             // Hook 'prerender' to override the camera controller RIGHT before the draw
             await new Promise<void>(resolve => {
@@ -136,10 +146,13 @@ export const captureReflectionProbe = async (scene: Scene, worldPos: Vec3): Prom
             return null;
         }
     } finally {
-        // ALWAYS restore camera and re-enable screen output, even if an error occurred
+        // ALWAYS restore camera, helper visibility, and screen output, even if an error occurred
         entity.setLocalPosition(savedPos.x, savedPos.y, savedPos.z);
         entity.setLocalRotation(savedRot);
-        finalPass.enabled = true;
+        scene.camera.renderOverlays = savedRenderOverlays;
+        scene.gizmoLayer.enabled = savedGizmoLayerEnabled;
+        finalPass.enabled = savedFinalPassEnabled;
+        scene.forceRender = true;
         _probeRunning = false;
     }
 };

@@ -90,17 +90,34 @@ class SSRPass {
     /**
      * Blit the current scene color buffer into ssrSceneTexture.
      * Call this AFTER splatPass but BEFORE meshPass so the snapshot
-     * contains the 3DGS scene without any mesh objects.
+     * contains the 3DGS scene without mesh objects, gizmos, grid axes,
+     * selection outlines, or other editor-only helpers.
      */
     captureSceneSnapshot(colorBuffer: Texture) {
         const device = this.scene.app.graphicsDevice;
         this._captureRef(colorBuffer);
 
         const anyDevice = device as any;
+        const oldRt = anyDevice.renderTarget;
+        const oldVx = anyDevice.vx, oldVy = anyDevice.vy, oldVw = anyDevice.vw, oldVh = anyDevice.vh;
+        const oldSx = anyDevice.sx, oldSy = anyDevice.sy, oldSw = anyDevice.sw, oldSh = anyDevice.sh;
+
         anyDevice.setRenderTarget(this.ssrSceneTarget);
         anyDevice.updateBegin?.();
+        anyDevice.setViewport(0, 0, this.ssrSceneTarget.width, this.ssrSceneTarget.height);
+        anyDevice.setScissor(0, 0, this.ssrSceneTarget.width, this.ssrSceneTarget.height);
         this.blitPass.execute();
         anyDevice.updateEnd?.();
+
+        anyDevice.setRenderTarget(oldRt);
+        anyDevice.setViewport(oldVx, oldVy, oldVw, oldVh);
+        anyDevice.setScissor(oldSx, oldSy, oldSw, oldSh);
+    }
+
+    resize(width: number, height: number) {
+        if (this.ssrSceneTarget.width !== width || this.ssrSceneTarget.height !== height) {
+            this.ssrSceneTarget.resize(width, height);
+        }
     }
 
     /**

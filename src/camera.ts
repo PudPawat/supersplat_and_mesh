@@ -18,6 +18,7 @@ import {
     Color,
     Entity,
     Mat4,
+    Layer,
     Ray,
     RenderPass,
     RenderPassForward,
@@ -115,6 +116,7 @@ class Camera extends Element {
     gizmoPass: RenderPassForward;
     finalPass: SimpleRenderPass;
     ssrPass: SSRPass | null = null;
+    private _ssrViewProj = new Mat4();
 
     // overridden target size
     targetSizeOverride: { width: number, height: number } = null;
@@ -372,6 +374,21 @@ class Camera extends Element {
 
         scene.events.on('scene.boundChanged', this.onBoundChanged, this);
 
+        // Capture the SSR source immediately after the splat pass, before mesh and
+        // gizmo/debug helper rendering. This prevents transform axes, grid axes,
+        // selection overlays, and other helper colors from being sampled by mesh
+        // reflections while keeping those helpers visible in the main viewport.
+        camera.on('postRenderLayer', (layer: Layer, transparent: boolean) => {
+            if (layer !== scene.splatLayer || !transparent || !this.ssrPass || !this.colorTarget) {
+                return;
+            }
+
+            const cameraComponent = this.mainCamera.camera;
+            this._ssrViewProj.mul2(cameraComponent.projectionMatrix, cameraComponent.viewMatrix);
+            this.ssrPass.captureSceneSnapshot(this.colorTarget.colorBuffer);
+            this.ssrPass.updateUniforms(this._ssrViewProj, this.targetSize.width, this.targetSize.height);
+        });
+
         // prepare camera-specific uniforms
         this.updateCameraUniforms = () => {
             const device = scene.graphicsDevice;
@@ -569,7 +586,8 @@ class Camera extends Element {
 
             this.finalPass.init(null);
 
-            // SSR: create pass and snapshot blit between splatPass and meshPass
+            // SSR: create the clean scene snapshot texture used by mesh reflections.
+            // The actual copy is triggered from postRenderLayer after splatPass.
             if (!this.ssrPass) {
                 this.ssrPass = new SSRPass(scene, width, height);
             }
@@ -584,6 +602,7 @@ class Camera extends Element {
             workTarget.resize(width, height);
             colorTarget.resize(width, height);
             splatTarget.resize(width, height);
+            this.ssrPass?.resize(width, height);
         }
 
         this.camera.horizontalFov = width > height;
@@ -628,12 +647,6 @@ class Camera extends Element {
         camera.orthoHeight = this.distanceTween.value.distance * this.sceneRadius / this.fovFactor * (this.fov / 90) * (camera.horizontalFov ? targetSize.height / targetSize.width : 1);
         camera.camera._updateViewProjMat();
 
-        // SSR: snapshot the scene before meshPass, update per-frame uniforms
-        if (this.ssrPass && this.colorTarget) {
-            const vp = new Mat4().mul2(camera.projectionMatrix, camera.viewMatrix);
-            this.ssrPass.captureSceneSnapshot(this.colorTarget.colorBuffer);
-            this.ssrPass.updateUniforms(vp, targetSize.width, targetSize.height);
-        }
     }
 
     fitClippingPlanes(cameraPosition: Vec3, forwardVec: Vec3) {

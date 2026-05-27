@@ -155,8 +155,8 @@ class MeshElement extends Element {
         let atlas = await captureReflectionProbe(scene, worldPos);
 
         if (!atlas) {
-            console.warn('[MeshElement] probe failed, falling back to screen capture for', this._name);
-            atlas = captureSceneEnv(scene);
+            console.warn('[MeshElement] probe failed, falling back to clean screen capture for', this._name);
+            atlas = await captureSceneEnv(scene);
         }
 
         if (atlas) {
