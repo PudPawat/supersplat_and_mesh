@@ -50,13 +50,18 @@ import { ShaderQuad, SimpleRenderPass } from './utils/simple-render-pass';
 //     -Y face: t increases toward +Z  (camera-up = -Z → face is V-flipped)
 //   Both up/down faces need a V-flip so reprojectTexture samples correctly.
 //   The flipV column drives the uFlipV uniform in the blit shader.
+// DIRECTION PROOF (PlayCanvas right-handed, Y-up, default camera forward = -Z):
+//   Ry(θ) transforms (0,0,-1) to (-sin θ, 0, -cos θ).
+//   yaw= 90° → (-1, 0,  0) = -X     yaw=270° → (+1, 0,  0) = +X
+//   yaw=  0° → ( 0, 0, -1) = -Z     yaw=180° → ( 0, 0, +1) = +Z
+//   Rx(+90°) → (0, +1, 0) = +Y      Rx(-90°) → (0, -1, 0) = -Y
 const CUBE_FACE_DATA: Array<{ euler: [number, number, number]; flipV: boolean }> = [
-    { euler: [  0,  90, 0], flipV: false },  // face 0: POSITIVE_X  (right +X)
-    { euler: [  0, 270, 0], flipV: false },  // face 1: NEGATIVE_X  (left  -X)
-    { euler: [ 90,   0, 0], flipV: true  },  // face 2: POSITIVE_Y  (up    +Y) ← pitch=+90 looks UP; V-flip for correct t-axis
-    { euler: [-90,   0, 0], flipV: true  },  // face 3: NEGATIVE_Y  (down  -Y) ← pitch=-90 looks DOWN; V-flip for correct t-axis
-    { euler: [  0, 180, 0], flipV: false },  // face 4: POSITIVE_Z  (back  +Z)
-    { euler: [  0,   0, 0], flipV: false },  // face 5: NEGATIVE_Z  (front -Z)
+    { euler: [  0, 270, 0], flipV: false },  // face 0: POSITIVE_X  (+X) ← yaw=270° → forward=+X
+    { euler: [  0,  90, 0], flipV: false },  // face 1: NEGATIVE_X  (-X) ← yaw= 90° → forward=-X
+    { euler: [ 90,   0, 0], flipV: true  },  // face 2: POSITIVE_Y  (+Y) ← pitch=+90° → forward=+Y; V-flip for WebGL t-axis
+    { euler: [-90,   0, 0], flipV: true  },  // face 3: NEGATIVE_Y  (-Y) ← pitch=-90° → forward=-Y; V-flip for WebGL t-axis
+    { euler: [  0, 180, 0], flipV: false },  // face 4: POSITIVE_Z  (+Z) ← yaw=180° → forward=+Z
+    { euler: [  0,   0, 0], flipV: false },  // face 5: NEGATIVE_Z  (-Z) ← yaw=  0° → forward=-Z
 ];
 
 /** Capture geometry for the reflection probe. */
@@ -105,6 +110,7 @@ const BLIT_FRAG = /* glsl */`
 
 // ── Mutex: one probe at a time ────────────────────────────────────────────────
 let _probeRunning = false;
+export const isProbeRunning = () => _probeRunning;
 
 export const captureReflectionProbe = async (
     scene: Scene,

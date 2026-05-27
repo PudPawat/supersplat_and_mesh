@@ -11,8 +11,7 @@ import {
 } from 'playcanvas';
 
 import { Element, ElementType } from './element';
-import { captureSceneEnv } from './mesh-cubemap';
-import { captureReflectionProbe } from './mesh-probe';
+import { captureReflectionProbe, isProbeRunning } from './mesh-probe';
 import { ssrChunk } from './shaders/ssr-shader';
 import { Scene } from './scene';
 
@@ -163,15 +162,19 @@ class MeshElement extends Element {
         const scene = this.scene as Scene;
         if (!scene || !this.pivot) return;
 
+        // If another probe is already running, wait for it to finish then retry.
+        // DO NOT fall back to captureSceneEnv here — it would capture a black screen
+        // because finalPass is disabled while the other probe is running.
+        if (isProbeRunning()) {
+            console.log('[MeshElement] probe busy, retrying in 3 s for', this._name);
+            setTimeout(() => this.captureReflection(), 3000);
+            return;
+        }
+
         const worldPos = this.pivot.getPosition().clone();
         console.log('[MeshElement] starting reflection probe at', worldPos.toString(), 'for', this._name);
 
-        let atlas = await captureReflectionProbe(scene, worldPos, _globalProbeShape);
-
-        if (!atlas) {
-            console.warn('[MeshElement] probe failed, falling back to screen capture for', this._name);
-            atlas = captureSceneEnv(scene);
-        }
+        const atlas = await captureReflectionProbe(scene, worldPos, _globalProbeShape);
 
         if (atlas) {
             if (this._envAtlas) this._envAtlas.destroy();
