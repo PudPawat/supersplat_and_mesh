@@ -131,10 +131,12 @@ export const captureReflectionProbe = async (
     _probeRunning = true;
 
     // Save camera state for full restoration
-    const savedPos = entity.getLocalPosition().clone();
-    const savedRot = new Quat();
+    const savedPos      = entity.getLocalPosition().clone();
+    const savedRot      = new Quat();
     savedRot.copy(entity.getLocalRotation());
-    const savedFov = entity.camera.fov;
+    const savedFov      = entity.camera.fov;
+    const savedNear     = entity.camera.nearClip;
+    const savedFar      = entity.camera.farClip;
 
     const { faceSize, numSamples, equirectW, equirectH } = PROBE_QUALITY[shape];
     console.log(`[reflProbe] shape=${shape} faceSize=${faceSize} numSamples=${numSamples}`);
@@ -184,8 +186,13 @@ export const captureReflectionProbe = async (
                     entity.setLocalEulerAngles(pitch, yaw, roll);
                     // 90° FOV: each face covers exactly a quarter-sphere
                     entity.camera.fov = 90;
-                    // Refit clipping planes for this face direction
-                    scene.camera.fitClippingPlanes(entity.getLocalPosition(), entity.forward);
+                    // Fixed near/far for probe capture.
+                    // fitClippingPlanes() is tuned for the user's orbit view, not for a
+                    // camera sitting at the object centre looking outward — it can produce
+                    // a near clip that's too large for close-in geometry (table surface,
+                    // floor, walls) and causes those regions to render black in the atlas.
+                    entity.camera.nearClip = 0.001;
+                    entity.camera.farClip  = 10000;
 
                     // Register postrender SYNCHRONOUSLY here — guaranteed same frame
                     scene.app.once('postrender', () => {
@@ -254,7 +261,11 @@ export const captureReflectionProbe = async (
         // ALWAYS restore — even if an error occurred
         entity.setLocalPosition(savedPos.x, savedPos.y, savedPos.z);
         entity.setLocalRotation(savedRot);
-        entity.camera.fov = savedFov;
+        entity.camera.fov      = savedFov;
+        entity.camera.nearClip = savedNear;
+        entity.camera.farClip  = savedFar;
+        // Re-fit clipping planes for the restored view direction
+        scene.camera.fitClippingPlanes(entity.getLocalPosition(), entity.forward);
         finalPass.enabled = true;
         blitQuad.destroy();
         _probeRunning = false;
