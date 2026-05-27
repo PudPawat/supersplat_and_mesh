@@ -267,6 +267,18 @@ class Menu extends Container {
             text: localize('menu.render.video', { ellipsis: true }),
             icon: createSvg(sceneExport),
             onSelect: async () => await events.invoke('show.videoSettingsDialog')
+        }, {
+            // separator
+        }, {
+            text: 'Hide Axis Helpers',
+            icon: 'E360',
+            isVisible: () => events.invoke('view.axisHelpersVisible'),
+            onSelect: () => events.fire('view.setAxisHelpersVisible', false)
+        }, {
+            text: 'Show Axis Helpers',
+            icon: 'E360',
+            isVisible: () => !events.invoke('view.axisHelpersVisible'),
+            onSelect: () => events.fire('view.setAxisHelpersVisible', true)
         }]);
 
         const videoTutorialsMenuPanel = new MenuPanel([{
