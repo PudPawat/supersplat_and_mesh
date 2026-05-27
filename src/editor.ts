@@ -701,6 +701,35 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
         setOutlineSelection(value);
     });
 
+    // axis helpers (red/green/blue gizmo + overlays)
+
+    let axisHelpersVisible = scene.camera.renderOverlays;
+
+    const setAxisHelpersVisible = (visible: boolean) => {
+        if (visible !== axisHelpersVisible) {
+            axisHelpersVisible = visible;
+            scene.camera.renderOverlays = visible;
+            const gizmoLayer: any = (scene as any).gizmoLayer;
+            if (gizmoLayer) {
+                gizmoLayer.enabled = visible;
+            }
+            events.fire('view.axisHelpersVisible', axisHelpersVisible);
+            scene.forceRender = true;
+        }
+    };
+
+    events.function('view.axisHelpersVisible', () => {
+        return axisHelpersVisible;
+    });
+
+    events.on('view.setAxisHelpersVisible', (value: boolean) => {
+        setAxisHelpersVisible(value);
+    });
+
+    events.on('view.toggleAxisHelpersVisible', () => {
+        setAxisHelpersVisible(!events.invoke('view.axisHelpersVisible'));
+    });
+
     // view spherical harmonic bands
 
     let viewBands = scene.config.show.shBands;
@@ -752,6 +781,7 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
     events.fire('camera.fov', scene.camera.fov);
     events.fire('camera.overlay', cameraOverlay);
     events.fire('view.bands', viewBands);
+    events.fire('view.axisHelpersVisible', axisHelpersVisible);
 
     // doc serialization
     events.function('docSerialize.view', () => {
