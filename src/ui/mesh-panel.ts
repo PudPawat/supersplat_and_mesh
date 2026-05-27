@@ -127,56 +127,8 @@ class MeshPanel extends Container {
         addSec.appendChild(importRow);
 
         // ══════════════════════════════════════════════════════════════════════
-        // SECTION 2 — Objects
-        // ══════════════════════════════════════════════════════════════════════
-        scroll.appendChild(rule());
-        const objSec = section('mp-objects');
-        objSec.appendChild(heading('Objects'));
-
-        const objList = document.createElement('div');
-        objList.id = 'mp-obj-list';
-        objSec.appendChild(objList);
-
-        // ══════════════════════════════════════════════════════════════════════
-        // SECTION 3 — Gizmo mode
-        // ══════════════════════════════════════════════════════════════════════
-        scroll.appendChild(rule());
-        const modeSec = section('mp-mode');
-        modeSec.appendChild(heading('Gizmo Mode'));
-
-        const modeRow = document.createElement('div');
-        modeRow.className = 'mp-btn-row';
-
-        const gizmoModes = [
-            { mode: 'translate', icon: '✥', label: 'Move'   },
-            { mode: 'rotate',    icon: '↻', label: 'Rotate' },
-            { mode: 'scale',     icon: '⇲', label: 'Scale'  },
-        ];
-        const modeBtns = new Map<string, HTMLElement>();
-
-        gizmoModes.forEach(({ mode, icon, label }) => {
-            const btn = iconBtn(icon, `${label} (${label[0]})`);
-            const lbl = document.createElement('span');
-            lbl.className = 'mp-btn-label';
-            lbl.textContent = label;
-            const wrap = document.createElement('div');
-            wrap.className = 'mp-shape-wrap';
-            wrap.appendChild(btn);
-            wrap.appendChild(lbl);
-            wrap.addEventListener('click', () => {
-                modeBtns.forEach((b, m) => {
-                    b.classList.toggle('active', m === mode);
-                });
-                events.fire('mesh.gizmo.mode', mode);
-            });
-            modeRow.appendChild(wrap);
-            modeBtns.set(mode, btn);
-        });
-        modeBtns.get('translate')!.classList.add('active');
-        modeSec.appendChild(modeRow);
-
-        // ══════════════════════════════════════════════════════════════════════
-        // SECTION 4 — Reflection (always visible — global settings)
+        // SECTION 2 — Reflection (always visible — global settings)
+        // Placed here so it is immediately visible without scrolling.
         // ══════════════════════════════════════════════════════════════════════
         scroll.appendChild(rule());
         const reflSec = section('mp-refl');
@@ -253,6 +205,55 @@ class MeshPanel extends Container {
         captureBtn.addEventListener('click', () => selectedMesh?.captureReflection());
         captureRow.appendChild(captureBtn);
         reflSec.appendChild(captureRow);
+
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 3 — Objects
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const objSec = section('mp-objects');
+        objSec.appendChild(heading('Objects'));
+
+        const objList = document.createElement('div');
+        objList.id = 'mp-obj-list';
+        objSec.appendChild(objList);
+
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 4 — Gizmo mode
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const modeSec = section('mp-mode');
+        modeSec.appendChild(heading('Gizmo Mode'));
+
+        const modeRow = document.createElement('div');
+        modeRow.className = 'mp-btn-row';
+
+        const gizmoModes = [
+            { mode: 'translate', icon: '✥', label: 'Move'   },
+            { mode: 'rotate',    icon: '↻', label: 'Rotate' },
+            { mode: 'scale',     icon: '⇲', label: 'Scale'  },
+        ];
+        const modeBtns = new Map<string, HTMLElement>();
+
+        gizmoModes.forEach(({ mode, icon, label }) => {
+            const btn = iconBtn(icon, `${label} (${label[0]})`);
+            const lbl = document.createElement('span');
+            lbl.className = 'mp-btn-label';
+            lbl.textContent = label;
+            const wrap = document.createElement('div');
+            wrap.className = 'mp-shape-wrap';
+            wrap.appendChild(btn);
+            wrap.appendChild(lbl);
+            wrap.addEventListener('click', () => {
+                modeBtns.forEach((b, m) => {
+                    b.classList.toggle('active', m === mode);
+                });
+                events.fire('mesh.gizmo.mode', mode);
+            });
+            modeRow.appendChild(wrap);
+            modeBtns.set(mode, btn);
+        });
+        modeBtns.get('translate')!.classList.add('active');
+        modeSec.appendChild(modeRow);
 
         // ══════════════════════════════════════════════════════════════════════
         // SECTION 5 — Transform (hidden until object selected)
