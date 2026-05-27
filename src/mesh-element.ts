@@ -239,12 +239,26 @@ class MeshElement extends Element {
         mat.emissive.set(o.tintR * 0.04, o.tintG * 0.04, o.tintB * 0.04);
 
         if (useSSR) {
-            // SSR mode: screen-space reflections via custom shader chunk.
-            // Do NOT touch envAtlas here — PlayCanvas won't generate reflection
-            // code at all if there is no env source, which would make the SSR
-            // chunk replacement a no-op and the object go black.
+            // SSR mode: screen-space reflections with probe fallback.
+            //
+            // The custom ssrChunk replaces reflectionEnvPS.  It tries a
+            // screen-space march first; when the reflected ray misses (points
+            // off-screen or behind the camera) it falls back to sampling
+            // texture_envAtlas directly — so the surface never goes black.
+            //
+            // For the fallback to work, texture_envAtlas must be in scope:
+            //   • if a probe was captured, use that atlas
+            //   • otherwise enable useSkybox so PlayCanvas at least declares
+            //     the ENV_ATLAS uniform (even if no atlas is bound)
             (mat as any).chunks = { reflectionEnvPS: ssrChunk };
             mat.setParameter('uSSRScene', ssrTexture);
+            if (this._envAtlas) {
+                mat.envAtlas  = this._envAtlas;
+                mat.useSkybox = false;
+            } else {
+                mat.envAtlas  = null;
+                mat.useSkybox = true;  // triggers ENV_ATLAS include so uniform exists
+            }
         } else if (this._envAtlas) {
             // Probe mode: pre-captured IBL atlas from object's world position
             (mat as any).chunks = {};
