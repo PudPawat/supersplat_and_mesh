@@ -176,7 +176,86 @@ class MeshPanel extends Container {
         modeSec.appendChild(modeRow);
 
         // ══════════════════════════════════════════════════════════════════════
-        // SECTION 4 — Transform (hidden until object selected)
+        // SECTION 4 — Reflection (always visible — global settings)
+        // ══════════════════════════════════════════════════════════════════════
+        scroll.appendChild(rule());
+        const reflSec = section('mp-refl');
+        reflSec.appendChild(heading('Reflection'));
+
+        // ── Reflection mode toggle (SSR vs Probe) ────────────────────────────
+        const reflModeRow = document.createElement('div');
+        reflModeRow.className = 'mp-field-row';
+        const reflModeLbl = document.createElement('span');
+        reflModeLbl.className = 'mp-field-lbl';
+        reflModeLbl.textContent = 'Mode';
+        reflModeLbl.title = 'SSR = Screen-Space (real-time). Probe = Cubemap capture (accurate, angle-independent).';
+        reflModeRow.appendChild(reflModeLbl);
+
+        // Two-button toggle: [SSR]  [Probe]
+        const reflModeWrap = document.createElement('div');
+        reflModeWrap.style.cssText = 'display:flex;gap:4px;flex:1;';
+        const ssrBtn = document.createElement('div');
+        ssrBtn.className = 'mp-mode-btn active';
+        ssrBtn.textContent = 'SSR';
+        ssrBtn.title = 'Screen-Space Reflections (real-time, may miss off-screen objects)';
+        const probeBtn = document.createElement('div');
+        probeBtn.className = 'mp-mode-btn';
+        probeBtn.textContent = 'Probe';
+        probeBtn.title = 'Cubemap probe capture (full 360°, click Re-capture to update)';
+        reflModeWrap.appendChild(ssrBtn);
+        reflModeWrap.appendChild(probeBtn);
+        reflModeRow.appendChild(reflModeWrap);
+        reflSec.appendChild(reflModeRow);
+
+        // ── Probe shape toggle (Cube / Sphere) — shown only in probe mode ────
+        const probeShapeRow = document.createElement('div');
+        probeShapeRow.className = 'mp-field-row';
+        const probeShapeLbl = document.createElement('span');
+        probeShapeLbl.className = 'mp-field-lbl';
+        probeShapeLbl.textContent = 'Probe Shape';
+        probeShapeLbl.title = 'Cube: 6 axis-aligned faces (fast). Sphere: higher resolution + more samples (slower, smoother on curved surfaces).';
+        probeShapeRow.appendChild(probeShapeLbl);
+
+        const probeShapeWrap = document.createElement('div');
+        probeShapeWrap.style.cssText = 'display:flex;gap:4px;flex:1;';
+        const cubeShapeBtn = document.createElement('div');
+        cubeShapeBtn.className = 'mp-mode-btn active';
+        cubeShapeBtn.textContent = 'Cube';
+        cubeShapeBtn.title = '6 axis-aligned captures, 256px faces — fast';
+        const sphereShapeBtn = document.createElement('div');
+        sphereShapeBtn.className = 'mp-mode-btn';
+        sphereShapeBtn.textContent = 'Sphere';
+        sphereShapeBtn.title = '6 captures, 512px faces, 16× samples — smoother on curved surfaces';
+        probeShapeWrap.appendChild(cubeShapeBtn);
+        probeShapeWrap.appendChild(sphereShapeBtn);
+        probeShapeRow.appendChild(probeShapeWrap);
+        reflSec.appendChild(probeShapeRow);
+
+        // Reflection far-clip slider
+        const clipRow2 = document.createElement('div');
+        clipRow2.className = 'mp-field-row';
+        const clipLbl2 = document.createElement('span');
+        clipLbl2.className = 'mp-field-lbl';
+        clipLbl2.textContent = 'Reflect Clip';
+        clipLbl2.title = 'Far clip multiplier used when capturing reflections. Raise this if the reflection has black patches.';
+        clipRow2.appendChild(clipLbl2);
+        const clipSlider2 = new SliderInput({ min: 1, max: 100, step: 1, value: 5 });
+        clipSlider2.dom.classList.add('mp-slider');
+        clipRow2.appendChild(clipSlider2.dom);
+        reflSec.appendChild(clipRow2);
+
+        // Re-capture button
+        const captureRow = document.createElement('div');
+        captureRow.className = 'mp-capture-row';
+        const captureBtn = document.createElement('div');
+        captureBtn.className = 'mp-capture-btn';
+        captureBtn.textContent = '↺  Re-capture Reflection';
+        captureBtn.addEventListener('click', () => selectedMesh?.captureReflection());
+        captureRow.appendChild(captureBtn);
+        reflSec.appendChild(captureRow);
+
+        // ══════════════════════════════════════════════════════════════════════
+        // SECTION 5 — Transform (hidden until object selected)
         // ══════════════════════════════════════════════════════════════════════
         scroll.appendChild(rule());
         const tfSec = section('mp-tf');
@@ -201,60 +280,11 @@ class MeshPanel extends Container {
         const sclVec = makeVecRow('Scale',    0.01, [1, 1, 1]);
 
         // ══════════════════════════════════════════════════════════════════════
-        // SECTION 5 — Material (hidden until object selected)
+        // SECTION 6 — Material (hidden until object selected)
         // ══════════════════════════════════════════════════════════════════════
         scroll.appendChild(rule());
         const matSec = section('mp-mat');
         matSec.appendChild(heading('Material'));
-
-        // ── Reflection mode toggle (SSR vs Probe) ────────────────────────────
-        const reflModeRow = document.createElement('div');
-        reflModeRow.className = 'mp-field-row';
-        const reflModeLbl = document.createElement('span');
-        reflModeLbl.className = 'mp-field-lbl';
-        reflModeLbl.textContent = 'Reflection';
-        reflModeLbl.title = 'SSR = Screen-Space (real-time). Probe = Cubemap capture (accurate, angle-independent).';
-        reflModeRow.appendChild(reflModeLbl);
-
-        // Two-button toggle: [SSR]  [Probe]
-        const reflModeWrap = document.createElement('div');
-        reflModeWrap.style.cssText = 'display:flex;gap:4px;flex:1;';
-        const ssrBtn = document.createElement('div');
-        ssrBtn.className = 'mp-mode-btn active';
-        ssrBtn.textContent = 'SSR';
-        ssrBtn.title = 'Screen-Space Reflections (real-time, may miss off-screen objects)';
-        const probeBtn = document.createElement('div');
-        probeBtn.className = 'mp-mode-btn';
-        probeBtn.textContent = 'Probe';
-        probeBtn.title = 'Cubemap probe capture (full 360°, click Re-capture to update)';
-        reflModeWrap.appendChild(ssrBtn);
-        reflModeWrap.appendChild(probeBtn);
-        reflModeRow.appendChild(reflModeWrap);
-        matSec.appendChild(reflModeRow);
-
-        // ── Probe shape toggle (Cube / Sphere) — shown only in probe mode ────
-        const probeShapeRow = document.createElement('div');
-        probeShapeRow.className = 'mp-field-row';
-        const probeShapeLbl = document.createElement('span');
-        probeShapeLbl.className = 'mp-field-lbl';
-        probeShapeLbl.textContent = 'Probe Shape';
-        probeShapeLbl.title = 'Cube: 6 axis-aligned faces (fast). Sphere: higher resolution + more samples (slower, smoother on curved surfaces).';
-        probeShapeRow.appendChild(probeShapeLbl);
-
-        const probeShapeWrap = document.createElement('div');
-        probeShapeWrap.style.cssText = 'display:flex;gap:4px;flex:1;';
-        const cubeShapeBtn = document.createElement('div');
-        cubeShapeBtn.className = 'mp-mode-btn active';
-        cubeShapeBtn.textContent = 'Cube';
-        cubeShapeBtn.title = '6 axis-aligned captures, 256px faces — fast';
-        const sphereShapeBtn = document.createElement('div');
-        sphereShapeBtn.className = 'mp-mode-btn';
-        sphereShapeBtn.textContent = 'Sphere';
-        sphereShapeBtn.title = '6 captures, 512px faces, 16× samples — smoother on curved surfaces';
-        probeShapeWrap.appendChild(cubeShapeBtn);
-        probeShapeWrap.appendChild(sphereShapeBtn);
-        probeShapeRow.appendChild(probeShapeWrap);
-        matSec.appendChild(probeShapeRow);
 
         // Preset row
         const presetRow = document.createElement('div');
@@ -300,41 +330,18 @@ class MeshPanel extends Container {
         const roughSlider   = makeSlider('Roughness',   0, 1, 0.0);
         const metalSlider   = makeSlider('Metalness',   0, 1, 1.0);
 
-        // Reflection far-clip slider (separate from material sliders — needs step:1 / wider range)
-        const clipRow2 = document.createElement('div');
-        clipRow2.className = 'mp-field-row';
-        const clipLbl2 = document.createElement('span');
-        clipLbl2.className = 'mp-field-lbl';
-        clipLbl2.textContent = 'Reflect Clip';
-        clipLbl2.title = 'Far clip multiplier used when capturing reflections. Raise this if the reflection has black patches.';
-        clipRow2.appendChild(clipLbl2);
-        const clipSlider2 = new SliderInput({ min: 1, max: 100, step: 1, value: 5 });
-        clipSlider2.dom.classList.add('mp-slider');
-        clipRow2.appendChild(clipSlider2.dom);
-        matSec.appendChild(clipRow2);
-
-        // Re-capture button
-        const captureRow = document.createElement('div');
-        captureRow.className = 'mp-capture-row';
-        const captureBtn = document.createElement('div');
-        captureBtn.className = 'mp-capture-btn';
-        captureBtn.textContent = '↺  Re-capture Reflection';
-        captureBtn.addEventListener('click', () => selectedMesh?.captureReflection());
-        captureRow.appendChild(captureBtn);
-        matSec.appendChild(captureRow);
-
         // ── STATE ────────────────────────────────────────────────────────────
         let selectedMesh: MeshElement | null = null;
         let panelUpdating = false;
         const meshItems = new Map<MeshElement, HTMLElement>();
 
         const showTfMat = (on: boolean) => {
-            tfSec.style.display = on ? '' : 'none';
+            tfSec.style.display  = on ? '' : 'none';
             matSec.style.display = on ? '' : 'none';
-            // also show/hide the rules before them
             posVec.enabled = rotVec.enabled = sclVec.enabled = on;
         };
         showTfMat(false);
+        // reflSec is always visible — no hide call needed
 
         const v3 = (v: Vec3): [number, number, number] => [v.x, v.y, v.z];
 
