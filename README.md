@@ -2,11 +2,11 @@
 
 [![License](https://img.shields.io/github/license/playcanvas/supersplat)](https://github.com/playcanvas/supersplat/blob/main/LICENSE)
 
-| [Live Demo](https://supersplat-and-mesh-pudpawat.vercel.app/) | [Project Page](https://pudpawat.github.io/supersplat_and_mesh/) | [Original SuperSplat Editor](https://superspl.at/editor) | [User Guide](https://developer.playcanvas.com/user-manual/gaussian-splatting/editing/supersplat/) |
+| [Live Demo](https://pudpawat-supersplat-and-mesh.vercel.app/) | [Project Page](https://pudpawat.github.io/supersplat_and_mesh/) | [Original SuperSplat Editor](https://superspl.at/editor) | [User Guide](https://developer.playcanvas.com/user-manual/gaussian-splatting/editing/supersplat/) |
 
 This project extends the [SuperSplat Editor](https://github.com/playcanvas/supersplat) — a free, browser-based tool for editing 3D Gaussian Splats (3DGS) — with **reflective mesh objects** that can be placed inside a splat scene and reflect the splats around them.
 
-**Live demo:** https://supersplat-and-mesh-pudpawat.vercel.app/
+**Live demo:** https://pudpawat-supersplat-and-mesh.vercel.app/
 
 **Project page:** https://pudpawat.github.io/supersplat_and_mesh/
 
