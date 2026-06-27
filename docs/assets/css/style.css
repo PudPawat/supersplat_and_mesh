@@ -76,6 +76,17 @@ a:hover {
   margin-bottom: 1.25rem;
 }
 
+.contact {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+  line-height: 1.7;
+}
+
+.contact a {
+  color: var(--link);
+}
+
 .links {
   display: flex;
   flex-wrap: wrap;
