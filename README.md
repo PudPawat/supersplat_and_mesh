@@ -2,13 +2,24 @@
 
 [![License](https://img.shields.io/github/license/playcanvas/supersplat)](https://github.com/playcanvas/supersplat/blob/main/LICENSE)
 
-| [Live Demo](https://supersplat-and-mesh-pudpawat.vercel.app/) | [Project Report](docs/index.html) | [Original SuperSplat Editor](https://superspl.at/editor) | [User Guide](https://developer.playcanvas.com/user-manual/gaussian-splatting/editing/supersplat/) |
+| [Live Demo](https://supersplat-and-mesh-pudpawat.vercel.app/) | [Project Page](https://pudpawat.github.io/supersplat_and_mesh/) | [Original SuperSplat Editor](https://superspl.at/editor) | [User Guide](https://developer.playcanvas.com/user-manual/gaussian-splatting/editing/supersplat/) |
 
 This project extends the [SuperSplat Editor](https://github.com/playcanvas/supersplat) — a free, browser-based tool for editing 3D Gaussian Splats (3DGS) — with **reflective mesh objects** that can be placed inside a splat scene and reflect the splats around them.
 
 **Live demo:** https://supersplat-and-mesh-pudpawat.vercel.app/
 
-![SuperSplat Editor](https://github.com/user-attachments/assets/b6cbb5cc-d3cc-4385-8c71-ab2807fd4fba)
+**Project page:** https://pudpawat.github.io/supersplat_and_mesh/
+
+## Demo Video
+
+Reflective Audi R8 GLB composited into a 3D Gaussian Splatting scene (SSR + reflection probe):
+
+[![Demo video — Reflective Mesh Compositing in 3DGS](https://img.youtube.com/vi/MQYeh4Jo45g/hqdefault.jpg)](https://youtu.be/MQYeh4Jo45g)
+
+- **YouTube:** https://youtu.be/MQYeh4Jo45g
+- **Google Drive:** https://drive.google.com/file/d/1IeFAibgcZSTsQc4C2tZWZGyGNmybPTtE/view?usp=drive_link
+
+The full project write-up (motivation, methods, performance, and embedded video) is on the [project page](https://pudpawat.github.io/supersplat_and_mesh/).
 
 ---
 
