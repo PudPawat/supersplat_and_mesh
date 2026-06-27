@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Reflective Mesh Compositing in 3D Gaussian Splatting Scenes — hybrid SSR + probe reflections in SuperSplat." />
+  <meta property="og:title" content="Reflective Mesh Compositing in 3D Gaussian Splatting Scenes" />
+  <meta property="og:description" content="Composite reflective GLB meshes into live 3DGS scenes with SSR and Reflection Probes." />
+  <title>Reflective Mesh × 3DGS</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+</head>
+<body>
+
+  <header class="hero container">
+    <h1>Reflective Mesh Compositing in 3D Gaussian Splatting Scenes</h1>
+
+    <p class="authors">
+      Pawat Chunhachatrachai<sup>1</sup>,
+      Warawut Janwittayachai<sup>1</sup>
+    </p>
+    <p class="affiliations"><sup>1</sup>National Taiwan University · Department of Computer Science and Information Engineering</p>
+    <p class="venue">CSIE5085 Computer Graphics · Professor: Ming Ouhyoung</p>
+
+    <div class="links">
+      <a class="btn btn-primary" href="https://supersplat-and-mesh-pudpawat.vercel.app/" target="_blank" rel="noopener">Live Demo</a>
+      <a class="btn" href="#video">Video</a>
+      <a class="btn" href="https://github.com/PudPawat/supersplat_and_mesh" target="_blank" rel="noopener">Code</a>
+      <a class="btn" href="#bibtex">BibTeX</a>
+    </div>
+
+    <p class="teaser">
+      <strong>SuperSplat + Reflective Mesh</strong> extends the open-source SuperSplat viewer so reflective
+      3D mesh objects can be composited into a live 3DGS scene in the browser.
+      <strong>Screen Space Reflection (SSR)</strong> handles on-screen ray marching while
+      <strong>Reflection Probes</strong> provide 360° fallback coverage; a confidence-based blend merges both sources.
+      GLB meshes keep their original PBR materials while reflecting the splat environment around them.
+    </p>
+  </header>
+
+  <main class="container">
+
+    <section id="video">
+      <h2>Video Demo</h2>
+      <div class="figure-block">
+        <div class="video-embed">
+          <iframe
+            src="https://drive.google.com/file/d/1IeFAibgcZSTsQc4C2tZWZGyGNmybPTtE/preview"
+            title="Reflective Mesh Compositing demo video"
+            allow="autoplay; encrypted-media"
+            allowfullscreen>
+          </iframe>
+        </div>
+        <p class="figure-caption">
+          <strong>Full preset demo.</strong>
+          Reflective Audi R8 GLB composited into a 3D Gaussian Splatting scene with SSR and probe-based reflections.
+          <a href="https://drive.google.com/file/d/1IeFAibgcZSTsQc4C2tZWZGyGNmybPTtE/view?usp=drive_link" target="_blank" rel="noopener">Open in Google Drive</a>
+          ·
+          <a href="https://youtu.be/MQYeh4Jo45g" target="_blank" rel="noopener">YouTube mirror</a>
+        </p>
+      </div>
+    </section>
+
+    <section id="motivation">
+      <h2>Motivation</h2>
+      <div class="section-content">
+        <p>
+          3D Gaussian Splatting (3DGS) enables photorealistic real-time novel-view synthesis via
+          <em>splat rasterization</em> — millions of oriented Gaussians sorted and alpha-blended per pixel.
+          Traditional triangle meshes, by contrast, use <em>rasterization with PBR shading</em> and expect
+          depth buffers, normals, or ray-traced environment maps for specular reflections.
+        </p>
+        <p>
+          <strong>The problem:</strong> you cannot drop a glossy GLB model into a 3DGS scene and expect correct
+          reflections out of the box. Mesh shaders look for skyboxes, cubemaps, or ray-traced hits — but the splat
+          background is not geometry the mesh renderer understands. Standard mesh ray tracing and SSR pipelines
+          assume conventional triangle depth; 3DGS produces no triangles, no G-buffer, and only an approximate
+          alpha-weighted depth approximation.
+        </p>
+        <p>
+          <strong>Our goal:</strong> combine 3DGS rasterization with mesh PBR reflection techniques so reflective
+          objects (cars, glass, metal) can sit inside a splat scene and show the splat environment in their reflections —
+          all in a standard web browser via WebGL.
+        </p>
+      </div>
+
+      <div class="grid-2 section-content">
+        <div class="method-card">
+          <h3>3DGS (Splat Rasterization)</h3>
+          <p>
+            Fast, volumetric, no mesh geometry pass. Produces color and approximate depth but no conventional
+            surface normals or triangle hits for reflection APIs.
+          </p>
+        </div>
+        <div class="method-card">
+          <h3>Mesh PBR (Reflection)</h3>
+          <p>
+            Cook-Torrance microfacet BRDF with GGX distribution. Expects environment maps, SSR depth buffers,
+            or ray-traced hits — incompatible with splats without a bridging layer.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="abstract">
+      <h2>Abstract</h2>
+      <div class="section-content">
+        <p>
+          3D Gaussian Splatting (3DGS) enables photorealistic real-time novel-view synthesis but provides no
+          support for interactive objects or reflective materials. We present a hybrid rendering system that
+          composites reflective 3D mesh objects into a live 3DGS scene by extending the open-source SuperSplat viewer.
+        </p>
+        <p>
+          Screen Space Reflection (SSR) handles on-screen ray marching while Reflection Probes provide 360-degree
+          fallback coverage; a confidence-based blend merges both sources. The system loads GLB meshes with PBR
+          materials and runs in a standard web browser via WebGL. We extend SuperSplat with a mesh compositing layer,
+          a dual reflection system, and an input dispatcher resolving conflicts between camera navigation and object
+          manipulation in a shared WebGL canvas.
+        </p>
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>Method</h2>
+      <div class="section-content">
+        <p>
+          The rendering pipeline executes in four stages: (1) Gaussian rendering draws the 3DGS scene;
+          (2) mesh rendering draws GLB objects depth-tested against the Gaussian depth buffer;
+          (3) SSR pass ray-marches against the combined depth buffer for reflective pixels;
+          (4) reflection blending merges SSR and probe sources via confidence weighting.
+        </p>
+        <pre><code>1. Gaussian Rendering   → 3DGS scene (color + approximate depth)
+2. Mesh Rendering       → GLB objects, depth-tested against Gaussian depth
+3. SSR Pass             → Screen-space ray march for reflective pixels
+4. Reflection Blending  → SSR + Probe merged via confidence weighting</code></pre>
+      </div>
+
+      <div class="grid-2 section-content">
+        <div class="method-card">
+          <h3>Screen Space Reflections (SSR)</h3>
+          <p>
+            After the splat pass, the scene color buffer is snapshotted <em>before</em> mesh objects draw.
+            A custom PlayCanvas shader chunk replaces the standard environment reflection path and ray-marches
+            in screen space each frame — sharp, parallax-correct, but limited to on-screen content.
+          </p>
+        </div>
+        <div class="method-card">
+          <h3>Reflection Probe (IBL)</h3>
+          <p>
+            Renders the 3DGS scene from the mesh object's position in six cubemap directions, reprojects to
+            equirectangular format, and builds a prefiltered specular atlas. Injected into GLB
+            <code>StandardMaterial</code> instances via <code>envAtlas</code> without replacing original textures.
+          </p>
+        </div>
+      </div>
+
+      <div class="section-content">
+        <p>
+          SSR assigns each pixel a confidence value (1.0 = successful hit, 0.0 = miss). The final reflection is:
+        </p>
+        <p class="formula">Reflection = Confidence × SSR_color + (1 − Confidence) × Probe_color</p>
+        <p>
+          For imported GLB files, we preserve all original PBR properties and only set
+          <code>envAtlas</code> and <code>useSkybox = false</code> on the author's materials.
+        </p>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Features</h2>
+      <div class="section-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Original SuperSplat</th>
+              <th>Our System</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Load 3DGS scenes (.ply / .splat)</td><td class="feature-yes">Yes</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Camera orbit / pan / zoom</td><td class="feature-yes">Yes</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Edit Gaussian splats</td><td class="feature-yes">Yes</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Insert 3D mesh objects (GLB)</td><td>No</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Mesh transform gizmo</td><td>No</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>PBR material adjustment</td><td>No</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Screen Space Reflections</td><td>No</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Reflection Probe cubemap</td><td>No</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Depth-correct mesh occlusion</td><td>N/A</td><td class="feature-yes">Yes</td></tr>
+            <tr><td>Reflection parameter UI</td><td>No</td><td class="feature-yes">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="results">
+      <h2>Performance</h2>
+      <div class="section-content">
+        <p>
+          Tested on NVIDIA RTX 3060 (Chrome) and Apple M1 (Safari) with ~1.2M-Gaussian indoor and outdoor scenes.
+          SSR iterations: 64; probe resolution: 256×256.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Configuration</th>
+              <th>SSR</th>
+              <th>Probe</th>
+              <th>Laptop FPS</th>
+              <th>M1 FPS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>3DGS only</td><td>Off</td><td>Off</td><td>120+</td><td>60+</td></tr>
+            <tr><td>+ 1 sphere (metallic=1.0)</td><td>On</td><td>On</td><td>95</td><td>45</td></tr>
+            <tr><td>+ Audi R8 (~120k polys)</td><td>On</td><td>On</td><td>62</td><td>28</td></tr>
+            <tr><td>+ Audi R8, SSR only</td><td>On</td><td>Off</td><td>68</td><td>32</td></tr>
+            <tr><td>+ Audi R8, Probe only</td><td>Off</td><td>On</td><td>85</td><td>42</td></tr>
+            <tr><td>+ Audi R8, SSR 128 iters</td><td>On</td><td>On</td><td>48</td><td>20</td></tr>
+          </tbody>
+        </table>
+        <p style="text-align:center; color:#555; font-size:0.95rem;">
+          High-polygon meshes with SSR remain interactive (~62 fps on laptop). Probe-only mode is the cheapest reflection option.
+        </p>
+      </div>
+    </section>
+
+    <section id="code">
+      <h2>Code &amp; Quick Start</h2>
+      <div class="section-content">
+        <pre><code>git clone https://github.com/PudPawat/supersplat_and_mesh.git
+cd supersplat_and_mesh
+npm install
+npm run develop
+
+# Open http://localhost:3000
+# 1. Load a .ply splat scene
+# 2. Click the Mesh tab in the bottom bar
+# 3. Import GLB or load the Audi R8 sample
+# 4. Adjust material presets and re-capture reflection</code></pre>
+        <p style="text-align:center;">
+          See the <a href="https://github.com/PudPawat/supersplat_and_mesh/blob/main/README.md">README</a> for
+          reflection pipeline details, probe capture notes, and deployment instructions.
+        </p>
+      </div>
+    </section>
+
+    <section id="bibtex">
+      <h2>BibTeX</h2>
+      <div class="section-content">
+        <pre><code>@misc{chunhachatrachai2026reflectivemesh,
+  title   = {Reflective Mesh Compositing in 3D Gaussian Splatting Scenes},
+  author  = {Chunhachatrachai, Pawat and Janwittayachai, Warawut},
+  year    = {2026},
+  note    = {CSIE5085 Computer Graphics, National Taiwan University},
+  howpublished = {\url{https://supersplat-and-mesh-pudpawat.vercel.app/}}
+}</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>
+      <a href="https://supersplat-and-mesh-pudpawat.vercel.app/">Live Demo</a> ·
+      <a href="https://github.com/PudPawat/supersplat_and_mesh">GitHub</a> ·
+      <a href="https://drive.google.com/file/d/1IeFAibgcZSTsQc4C2tZWZGyGNmybPTtE/view?usp=drive_link">Video (Drive)</a>
+    </p>
+    <p>
+      Built on <a href="https://github.com/playcanvas/supersplat" target="_blank" rel="noopener">SuperSplat</a> by PlayCanvas.
+      Project page template inspired by
+      <a href="https://pudpawat.github.io/SPATIOROUTE/" target="_blank" rel="noopener">SpatioRoute</a>,
+      <a href="https://nerfies.github.io/" target="_blank" rel="noopener">Nerfies</a>, and
+      <a href="https://robogsim.github.io/" target="_blank" rel="noopener">RoboGSim</a>.
+    </p>
+    <p>© 2026 Reflective Mesh × 3DGS authors.</p>
+  </footer>
+
+</body>
+</html>
